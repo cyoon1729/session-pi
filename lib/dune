@@ -1,3 +1,6 @@
 (library
  (name sessionPi)
- (libraries core async))
+ (libraries core base async)
+ (preprocess
+  (pps ppx_let))
+ )

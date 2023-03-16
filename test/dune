@@ -1,2 +1,4 @@
 (test
- (name sessionPi))
+ (name test)
+ (libraries sessionPi)
+ )

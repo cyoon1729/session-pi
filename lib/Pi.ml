@@ -3,8 +3,10 @@ type name = string
 type chan = string
 
 type typ = 
-  | LitInt of int
-  | LitBool of bool
+  | LitInt
+  | LitBool
+  | LitChar
+  | LitString
   | TChan of typ
   | TChanTup of typ list
   | SessTyp

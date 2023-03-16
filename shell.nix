@@ -6,9 +6,12 @@ let
     #use "topfind";;
     #thread;;
     #camlp4o;;
+    #require "base";;
     #require "core";;
+    #require "core_unix";;
     #require "async";;
     #require "core.syntax";;
+    #require "ppx_let";;
   '';
 in
 pkgs.mkShell rec {
@@ -17,10 +20,13 @@ pkgs.mkShell rec {
   [
     ocaml
     dune_3
+    base
     core
+    core_unix
     core_extended
     async
     findlib
+    ppx_let
   ]);
   IN_NIX_SHELL = 1;
   OCAMLINIT = "${ocamlInit}";
