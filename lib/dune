@@ -1,2 +1,3 @@
 (library
- (name sessionPi))
+ (name sessionPi)
+ (libraries core async))
