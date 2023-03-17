@@ -26,14 +26,13 @@ let closePi chanMap (pName : name) =
     Pipe.close w;
     Pipe.close_read r
 
-let sendPi chanMap (pName : name) data =
+let sendPi chanMap (pName : name) data : unit =
   let w =
     match Map.find chanMap pName with
     | None -> raise (Failure("Channel " ^ pName ^ " not found"))
     | Some (_, w) -> w
   in
-  Pipe.write_without_pushback w data;
-  return ()
+  Pipe.write_without_pushback w data
 
 let recvPi chanMap (pName : name) = 
   let (r, _) =
