@@ -14,10 +14,16 @@ let writer chanMap port =
  *  - https://github.com/mwhittaker/distributed-systems-ocaml/blob/master/async/pipes.ml
  *  - https://dev.realworldocaml.org/concurrent-programming.html
  *  - https://ocaml.org/p/async_kernel/v0.10.0/doc/Async_kernel/Deferred/index.html
- *)
 let reader chanMap port =
   let data = Chan.recvPi chanMap port in
   printf "%s\n" data
+*)
+
+let reader chanMap port =
+  let%bind data = Chan.recvPi chanMap port in
+  ignore(printf "%s\n" data);
+  ()
+  
 
 let main () =
   let chanMap = Map.empty (module String) in
@@ -26,7 +32,7 @@ let main () =
   let p2 = spawn_thread (fun () -> reader m c.port2) in
   Core_thread.join p1;
   Core_thread.join p2;
-  return ()
+  ()
 
 (* This works, but we want to call sendPi and recvPi in separate threads
 let main () : unit Deferred.t =
@@ -37,5 +43,11 @@ let main () : unit Deferred.t =
 *)
 
 let () =
+  main ();
+  never_returns (Scheduler.go ())
+
+  (*
+let () =
   Command.async ~summary:"" (Command.Param.return main)
   |> Command_unix.run
+*)
