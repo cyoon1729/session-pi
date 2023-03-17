@@ -41,7 +41,7 @@ let recvPi chanMap (pName : name) =
     | None -> raise (Failure("Channel " ^ pName ^ " not found"))
     | Some v -> v
   in
-  Pipe.read r >>=
+  Pipe.read r >>|
   function
   | `Eof -> failwith "EOF"
-  | `Ok data -> data
+  | `Ok data -> data 

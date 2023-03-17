@@ -20,10 +20,7 @@ let reader chanMap port =
 *)
 
 let reader chanMap port =
-  let%bind data = Chan.recvPi chanMap port in
-  ignore(printf "%s\n" data);
-  ()
-  
+  Chan.recvPi chanMap port >>> fun x -> printf "%s\n" x
 
 let main () =
   let chanMap = Map.empty (module String) in
