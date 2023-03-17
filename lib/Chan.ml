@@ -32,7 +32,8 @@ let sendPi chanMap (pName : name) data : unit =
     | None -> raise (Failure("Channel " ^ pName ^ " not found"))
     | Some (_, w) -> w
   in
-  Pipe.write_without_pushback w data
+  Pipe.write w data >>> (* block until data fits into pipe *)
+  fun () -> ()
 
 let recvPi chanMap (pName : name) = 
   let (r, _) =
