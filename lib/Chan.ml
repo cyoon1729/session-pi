@@ -17,29 +17,25 @@ let newPiChan chanMap (cName : name) (cTyp : typ) =
                        | `Duplicate -> m)
   in (chan, newMap)
 
+let getChanByName chanMap (pName : name) = 
+  match Map.find chanMap pName with
+  | None -> raise (Failure("Channel " ^ pName ^ " not found"))
+  | Some v -> v
+
 let closePi chanMap (pName : name) =
-  let (r, w) =
-    match Map.find chanMap pName with
-    | None -> raise (Failure("Channel " ^ pName ^ " not found"))
-    | Some v -> v
+  let (r, w) = getChanByName chanMap pName
   in
     Pipe.close w;
     Pipe.close_read r
 
 let sendPi chanMap (pName : name) data : unit =
-  let w =
-    match Map.find chanMap pName with
-    | None -> raise (Failure("Channel " ^ pName ^ " not found"))
-    | Some (_, w) -> w
+  let (_, w) = getChanByName chanMap pName
   in
   Pipe.write w data >>> (* block until data fits into pipe *)
   fun () -> ()
 
 let recvPi chanMap (pName : name) = 
-  let (r, _) =
-    match Map.find chanMap pName with
-    | None -> raise (Failure("Channel " ^ pName ^ " not found"))
-    | Some v -> v
+  let (r, _) = getChanByName chanMap pName
   in
   Pipe.read r >>=
   function
