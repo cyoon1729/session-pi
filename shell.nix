@@ -12,6 +12,7 @@ let
     #require "async";;
     #require "core.syntax";;
     #require "ppx_let";;
+    #require "thread";;
   '';
 in
 pkgs.mkShell rec {

@@ -1,5 +1,5 @@
 (executable
  (public_name sessionPi)
  (name main)
- (libraries sessionPi core core_unix.command_unix base async)
+ (libraries sessionPi core core_unix.command_unix base async async_unix)
  )
