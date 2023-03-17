@@ -1,3 +1,5 @@
+open Async
+
 type name = string
 
 type chan = string
@@ -22,13 +24,22 @@ type pattern =
   | PatTup of pattern list
   | Wildcard
 
+type expr = (* sth that can be sent via channels *)
+  | Str of string
+  | Var of string
+
 type pi = 
   | Nil
-  | Compose of pi * pi
-  | New of chan * typ * pi
-  | Send of chan * typ * pi
-  | Recv of chan * typ * pi
+  | Print of expr    
+  | Compose of pi * pi  (* P | Q *)
+  | Dot of pi * pi      (* P.Q *)
+  | New of chan * pi    (* (new x) P *)
+  | Send of chan * expr
+  | Recv of chan * string
   | Select of name * pi
   | Offer of (name * pi) list
 
-type piChan = {cTyp: typ; port1 : chan; port2 : chan;}
+(* the value of a var *)
+type value = Strg of string | PiChan of string Pipe.Reader.t * string Pipe.Writer.t
+
+type piChan = {port1 : chan; port2 : chan;}

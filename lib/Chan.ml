@@ -1,15 +1,14 @@
 open Core
 open Async
-
 open Pi
 
-let newPiChan chanMap (cName : name) (cTyp : typ) =
+let newPiChan chanMap (cName : name) =
   let (port1, port2) = (cName ^ "1", cName ^ "2") in
   let (r1, w1) = Pipe.create () in
   let (r2, w2) = Pipe.create () in
-  let chan = {cTyp = cTyp; port1 = port1; port2 = port2;} in
+  let chan = {port1 = port1; port2 = port2;} in
   let newMap = List.fold
-                 [(port1, (r1, w2)); (port2, (r2, w1))]
+                 [(port1, PiChan (r1, w2)); (port2, PiChan (r2, w1))]
                  ~init:chanMap 
                  ~f:(fun m (k, v) ->
                        match Map.add m ~key:k ~data:v with
@@ -22,7 +21,7 @@ let getChanByName chanMap (pName : name) =
   | None -> raise (Failure("Channel " ^ pName ^ " not found"))
   | Some v -> v
 
-let closePi chanMap (pName : name) =
+let closePi chanMap (pName : name) : unit =
   let (r, w) = getChanByName chanMap pName
   in
     Pipe.close w;
@@ -34,7 +33,7 @@ let sendPi chanMap (pName : name) data : unit =
   Pipe.write w data >>> (* block until data fits into pipe *)
   fun () -> ()
 
-let recvPi chanMap (pName : name) = 
+let recvPi chanMap (pName : name) : 'a Deferred.t = 
   let (r, _) = getChanByName chanMap pName
   in
   Pipe.read r >>|
