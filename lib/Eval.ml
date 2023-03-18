@@ -5,7 +5,7 @@ open Pi
 (* C-style thread creation; pass function and argument *)
 let spawn_thread work arg = Core_thread.create ~on_uncaught_exn:`Print_to_stderr work arg
 
-let mangledChanName varMap chanVar = 
+let mangledChanName varMap chanVar =
   let chan, sign =
     match chanVar with
     | Plus chan -> chan, 1
@@ -18,6 +18,7 @@ let mangledChanName varMap chanVar =
     * sign
   in
   mangled_chan
+;;
 
 (* evaluate pi caclulus expression *)
 let rec eval (varMap, globalMap, last, ast) =
@@ -58,8 +59,8 @@ let rec eval (varMap, globalMap, last, ast) =
   | Dot (p, q) ->
     (* execute p and q sequentially and propagate the varMap
 		   through the execution *)
-    eval (varMap, globalMap, last, p) >>= (fun new_varMap ->
-    eval (new_varMap, globalMap, last, q))
+    eval (varMap, globalMap, last, p)
+    >>= fun new_varMap -> eval (new_varMap, globalMap, last, q)
   | New (chan, p) ->
     (* add channel as new mangled name *)
     last := !last + 1;
@@ -76,20 +77,18 @@ let rec eval (varMap, globalMap, last, ast) =
     eval (new_varMap, globalMap, last, p)
   | Send (chanVar, e) ->
     (* get the mangled name corresponding to this polarity *)
-	let mangled_chan = mangledChanName varMap chanVar
-	in
+    let mangled_chan = mangledChanName varMap chanVar in
     (* send data through channel *)
     (match e with
      | Str s -> Chan.sendPi !globalMap mangled_chan (Strg s)
-	 | ChanVar chanVar ->
-       let mangled_chan_send = mangledChanName varMap chanVar 
-	   in
-	   let deferred_chan = 
+     | ChanVar chanVar ->
+       let mangled_chan_send = mangledChanName varMap chanVar in
+       let deferred_chan =
          match Map.find !globalMap mangled_chan_send with
          | None -> raise (Failure "bad name")
          | Some v -> v
        in
-	   deferred_chan >>> (fun v -> Chan.sendPi !globalMap mangled_chan v)
+       deferred_chan >>> fun v -> Chan.sendPi !globalMap mangled_chan v
      | _ -> (* TODO *) raise (Failure "Send not implemented for this type"));
     Deferred.return varMap
   | Recv (chanVar, var) ->
@@ -102,25 +101,30 @@ let rec eval (varMap, globalMap, last, ast) =
       | `Duplicate -> raise (Failure "shadowing variable")
     in
     (* get the mangled name corresponding to this polarity *)
-	let mangled_chan = mangledChanName varMap chanVar
-	in
+    let mangled_chan = mangledChanName varMap chanVar in
     (* receive deferred value and add it in the global map *)
     let var_value = Chan.recvPi !globalMap mangled_chan in
     (globalMap
        := match Map.add !globalMap ~key:mangled_var ~data:var_value with
           | `Ok new_globalMap -> new_globalMap
           | `Duplicate -> raise (Failure "shadowing variable"));
-	(* if received a channel, add its other polarity to the map as well *)
-	var_value >>= (fun var_value -> (match var_value with
-                           | PiChan (x, y, z, t) ->
-                                (globalMap
-							       := match Map.add !globalMap ~key:(-mangled_var) ~data: (Deferred.return (PiChan (z, t, x, y))) with
-							          | `Ok new_globalMap -> new_globalMap
-							          | `Duplicate -> raise (Failure "shadowing variable"));
-						   | _ -> ());
-					(* force the return into the monadic computation to avoid race conditions *)
-				    Deferred.return new_varMap)
+    (* if received a channel, add its other polarity to the map as well *)
+    var_value
+    >>= fun var_value ->
+    (match var_value with
+     | PiChan (x, y, z, t) ->
+       globalMap
+         := (match
+               Map.add
+                 !globalMap
+                 ~key:(-mangled_var)
+                 ~data:(Deferred.return (PiChan (z, t, x, y)))
+             with
+             | `Ok new_globalMap -> new_globalMap
+             | `Duplicate -> raise (Failure "shadowing variable"))
+     | _ -> ());
+    (* force the return into the monadic computation to avoid race conditions *)
+    Deferred.return new_varMap
   | _ -> (* TODO *) raise (Failure "language construct not implemented")
 
 and igneval x = ignore (eval x)
-

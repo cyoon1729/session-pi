@@ -27,7 +27,11 @@ let newPiChan (chanMap : globalMapType) (cName : int) : globalMapType =
 ;;
 
 let getChanByName (chanMap : globalMapType) (pName : int)
-  : (value Pipe.Reader.t * value Pipe.Writer.t * value Pipe.Reader.t * value Pipe.Writer.t) Deferred.t
+  : (value Pipe.Reader.t
+    * value Pipe.Writer.t
+    * value Pipe.Reader.t
+    * value Pipe.Writer.t)
+  Deferred.t
   =
   (* get the ***deferred*** value associated with this mangled name *)
   let v =

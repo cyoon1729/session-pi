@@ -12,23 +12,21 @@ let main () =
       , Compose
           (Send (Plus "c", Str "Hello"), Dot (Recv (Minus "c", "x"), Print (Var "x"))) )
   in*)
-
-  let ast = New ("z", Compose (New ("x", Compose (Send (Minus "x", ChanVar (Plus "z")),
-                                                  Dot (Recv (Plus "x", "y"), 
-                                                       Dot (Send (Minus "y", ChanVar (Plus "x")),
-										     		        Dot (Recv (Plus "x", "t"),
-													             Print (Var "t")
-                                                                )
-                                                           )
-                                                      )
-                                                 )
-                                   ),
-                               Dot (Recv (Plus "z", "v"),
- 						            Send (Minus "v", Str "Hello")
-						           )
-                              )
-				) in
-
+  let ast =
+    New
+      ( "z"
+      , Compose
+          ( New
+              ( "x"
+              , Compose
+                  ( Send (Minus "x", ChanVar (Plus "z"))
+                  , Dot
+                      ( Recv (Plus "x", "y")
+                      , Dot
+                          ( Send (Minus "y", ChanVar (Plus "x"))
+                          , Dot (Recv (Plus "x", "t"), Print (Var "t")) ) ) ) )
+          , Dot (Recv (Plus "z", "v"), Send (Minus "v", Str "Hello")) ) )
+  in
   ignore
     (Eval.eval
        ( (* empty local varMap *)
@@ -37,7 +35,7 @@ let main () =
          ref (Map.empty (module Int))
        , (* ref to last used mangled name *)
          ref 0
-	   , (* ast *)
+       , (* ast *)
          ast ))
 ;;
 

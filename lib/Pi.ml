@@ -39,19 +39,23 @@ type expr =
 type pi =
   (* process *)
   | Nil
-  | Print of expr   
-  | Compose of pi * pi       (* P | Q *)
-  | Dot of pi * pi           (* P.Q *)
-  | New of chan * pi         (* (new c) P *)
-  | Send of chanVar * expr   (* c+/c-<x>. P *)
+  | Print of expr
+  | Compose of pi * pi (* P | Q *)
+  | Dot of pi * pi (* P.Q *)
+  | New of chan * pi (* (new c) P *)
+  | Send of chanVar * expr (* c+/c-<x>. P *)
   | Recv of chanVar * string (* c+/c-(x). P *)
-  | Select of name * pi		 
+  | Select of name * pi
   | Offer of (name * pi) list
 
 (* the value of a var/chan in the globalMap *)
 type value =
   | Strg of string
-  | PiChan of value Pipe.Reader.t * value Pipe.Writer.t * value Pipe.Reader.t * value Pipe.Writer.t
+  | PiChan of
+      value Pipe.Reader.t
+      * value Pipe.Writer.t
+      * value Pipe.Reader.t
+      * value Pipe.Writer.t
 
 (* global map with deferred values *)
 type globalMapType = (int, value Deferred.t, Int.comparator_witness) Map.t
