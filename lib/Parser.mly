@@ -17,11 +17,15 @@
 %token TRUE FALSE PLUS MINUS QUOT COLON COMMA EOF
 
 %%
+
 pi:
+| compAtom									  { $1 }
+| compAtom BAR pi                             { Compose($1, $3) }
+
+compAtom:
 | atom                                        { $1 }
-| atom BAR pi                                 { Compose($1, $3) }
-| atom DOT pi                                 { Seq($1, $3) }
-| LPAREN NU VARIABLE RPAREN pi                { New($3, $5) }
+| atom DOT compAtom                           { Seq($1, $3) }
+| LPAREN NU VARIABLE RPAREN compAtom          { New($3, $5) }
 
 atom:
 | NIL                                         { Nil }
@@ -36,7 +40,7 @@ expr:
 | NUMBER              { Num($1) }
 | TRUE                { Bool(true) }
 | FALSE               { Bool(false) }
-| SLASH VARIABLE   { Str($2) }
+| SLASH VARIABLE      { Str($2) }
 | VARIABLE            { Var($1) }
 | chan                { ChanVar($1) }
 
