@@ -42,19 +42,20 @@ let getChanByName (chanMap : globalMapType) (pName : int)
   (* "peel off" a layer of types and put it back in the Deferred monad *)
   v
   >>| function
-      | PiChan (x, y, z, t) -> x, y, z, t
-      | _ -> raise (Failure "not a channel")
+  | PiChan (x, y, z, t) -> x, y, z, t
+  | _ -> raise (Failure "not a channel")
 ;;
 
 let closePi (chanMap : globalMapType) (pName : int) : unit =
   getChanByName chanMap pName
   >>> fun (r1, w1, r2, w2) ->
-    Pipe.close w1;
-    Pipe.close w2;
-    Pipe.close_read r1;
-    Pipe.close_read r2
+  Pipe.close w1;
+  Pipe.close w2;
+  Pipe.close_read r1;
+  Pipe.close_read r2
+;;
 
-let sendPi (chanMap : globalMapType) (pName : int) (data : 'a) : (unit Deferred.t) =
+let sendPi (chanMap : globalMapType) (pName : int) (data : 'a) : unit Deferred.t =
   getChanByName chanMap pName
   >>= (* the actual value of the channel is deferred *)
   fun (_, w, _, _) ->
@@ -67,6 +68,6 @@ let recvPi (chanMap : globalMapType) (pName : int) : 'a Deferred.t =
   fun (r, _, _, _) ->
   Pipe.read r
   >>| function
-      | `Eof -> failwith "EOF"
-      | `Ok data -> data
+  | `Eof -> failwith "EOF"
+  | `Ok data -> data
 ;;
