@@ -55,16 +55,19 @@ let rec eval (varMap, globalMap, last, ast) =
              | `Duplicate -> raise(Failure("shadowing name"))) in
 		globalMap := (Chan.newPiChan !globalMap mangled_chan);
 		eval (new_varMap, globalMap, last, p);
-  | Send (chan, e) -> 
+  | Send (chanVar, e) ->
+		let (chan, sign) = (match chanVar with
+			      	          | Plus chan -> (chan, 1)
+					          | Minus chan -> (chan, 0 - 1)) in
 		let mangled_chan = 
           (match Map.find varMap chan with
              | None -> raise (Failure("not in scope"))
-             | Some mangled_chan -> mangled_chan) in
+             | Some mangled_chan -> mangled_chan) * sign in
 		(match e with
 		   | Str s -> (Chan.sendPi !globalMap mangled_chan (Strg s))
 		   | _ -> raise (Failure("Send not implemented for this type")));
 		varMap
-  | Recv (chan, var) ->
+  | Recv (chanVar, var) ->
 		last := !last + 1;
 		let mangled_var = !last in
 		let new_varMap = 
@@ -72,10 +75,13 @@ let rec eval (varMap, globalMap, last, ast) =
 	         | `Ok new_varMap -> new_varMap
              | `Duplicate -> raise(Failure("shadowing variable"))) in
 		
+		let (chan, sign) = (match chanVar with
+			      	          | Plus chan -> (chan, 1)
+					          | Minus chan -> (chan, 0 - 1)) in
 		let mangled_chan = 
 		  (match Map.find varMap chan with
 		     | None -> raise (Failure("not in scope"))
-             | Some mangled_chan -> mangled_chan) in
+             | Some mangled_chan -> mangled_chan) * sign in
 		let var_value = (Chan.recvPi !globalMap mangled_chan) in
 		globalMap := (match (Map.add !globalMap ~key:mangled_var ~data:var_value) with
 	            		| `Ok new_globalMap -> new_globalMap
@@ -88,8 +94,8 @@ and igneval (varMap, globalMap, last, ast) =
   ()
 
 let main () =
-  let ast = New ("c", (Compose ((Send ("c", (Str "Hello"))),
-                                (Dot ((Recv ("c", "x")), (Print (Var "x"))))
+  let ast = New ("c", (Compose ((Send ((Plus "c"), (Str "Hello"))),
+                                (Dot ((Recv ((Minus "c"), "x")), (Print (Var "x"))))
                                )
                       )
                 ) in

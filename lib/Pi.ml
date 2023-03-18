@@ -4,6 +4,9 @@ type name = string
 
 type chan = string
 
+type chanVar = Plus of string
+		     | Minus of string
+
 type typ = 
   | LitInt
   | LitBool
@@ -36,8 +39,8 @@ type pi =
   | Compose of pi * pi  (* P | Q *)
   | Dot of pi * pi      (* P.Q *)
   | New of chan * pi    (* (new x) P *)
-  | Send of chan * expr
-  | Recv of chan * string
+  | Send of chanVar * expr
+  | Recv of chanVar * string
   | Select of name * pi
   | Offer of (name * pi) list
 
