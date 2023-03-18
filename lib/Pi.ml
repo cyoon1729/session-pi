@@ -44,8 +44,8 @@ type pi =
   | New of string * pi (* (new c) P *)
   | Send of chanVar * expr (* c+/c-<x>. P *)
   | Recv of chanVar * string (* c+/c-(x). P *)
-  | Select of string * string
-  | Offer of string * branch list
+  | Select of chanVar * string
+  | Offer of chanVar * branch list
 
 and branch = Branch of string * pi
 

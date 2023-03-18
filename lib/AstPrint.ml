@@ -29,7 +29,7 @@ let rec printPi pi =
   | New (c, p) -> "(New " ^ c ^ ") " ^ printPi p
   | Send (c, e) -> " Send (" ^ "chan:" ^ printChan c ^ " data:" ^ printExpr e ^ ")"
   | Recv (c, v) -> " Recv (" ^ "chan:" ^ printChan c ^ " var:" ^ v ^ ")"
-  | Select (c, n) -> " Select (" ^ "chan:" ^ c ^ " choice:" ^ n ^ ")"
+  | Select (c, n) -> " Select (" ^ "chan:" ^ printChan c ^ " choice:" ^ n ^ ")"
   | Offer (c, lps) ->
-    "Offer (" ^ "chan:" ^ c ^ " branches:[" ^ printLabelledPis lps ^ "])"
+    "Offer (" ^ "chan:" ^ printChan c ^ " branches:[" ^ printLabelledPis lps ^ "])"
 ;;

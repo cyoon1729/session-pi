@@ -33,8 +33,8 @@ atom:
 | LPAREN pi RPAREN                            { $2 }
 | chan EMIT LSBRACKET expr RSBRACKET          { Send($1, $4) }
 | chan ASK LPAREN VARIABLE RPAREN                 { Recv($1, $4) }
-| VARIABLE LEFTTRI VARIABLE                       { Select($1, $3) }
-| VARIABLE RIGHTTRI LBRACKET labelledPis RBRACKET { Offer($1, $4) }
+| chan LEFTTRI VARIABLE                       { Select($1, $3) }
+| chan RIGHTTRI LBRACKET labelledPis RBRACKET { Offer($1, $4) }
 
 expr:
 | NUMBER              { Num($1) }
