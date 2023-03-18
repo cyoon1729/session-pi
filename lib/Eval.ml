@@ -74,6 +74,11 @@ let rec eval (varMap, globalMap, last, ast) =
 		   `-mangled_chan` *)
     globalMap := Chan.newPiChan !globalMap mangled_chan;
     eval (new_varMap, globalMap, last, p)
+	(* NOTE: cannot close channels here as the lifetime of
+		 	 a channel might be extended via sends through
+			 pipes; TODO: think about some reference counting
+			 mechanism to free unnecessary pipes *)
+	(*>>| (fun v -> Chan.closePi !globalMap mangled_chan; v)*)
   | Send (chanVar, e) ->
     (* get the mangled name corresponding to this polarity *)
     let mangled_chan = mangledChanName varMap chanVar in
@@ -81,15 +86,18 @@ let rec eval (varMap, globalMap, last, ast) =
     (match e with
      | Str s -> Chan.sendPi !globalMap mangled_chan (Strg s)
      | ChanVar chanVar ->
+	   (* get deferred value of the channel to be sent *)
        let mangled_chan_send = mangledChanName varMap chanVar in
        let deferred_chan =
          match Map.find !globalMap mangled_chan_send with
          | None -> raise (Failure "bad name")
          | Some v -> v
        in
-       deferred_chan >>> fun v -> Chan.sendPi !globalMap mangled_chan v
-     | _ -> (* TODO *) raise (Failure "Send not implemented for this type"));
-    Deferred.return varMap
+	   (* once determined, write *)
+       deferred_chan >>= fun v -> Chan.sendPi !globalMap mangled_chan v
+     | _ -> (* TODO *) raise (Failure "Send not implemented for this type"))
+	(* once write has completed, return *)
+    >>| fun _ -> varMap
   | Recv (chanVar, var) ->
     (* add variable as new mangled name in local env *)
     last := !last + 1;

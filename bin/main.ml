@@ -14,8 +14,7 @@ let main () =
   print_endline (printPi ast);
   print_endline "\n ========= \n";
   print_endline "Execution:";
-  ignore
-    (Eval.eval
+  upon (Eval.eval
        ( (* empty local varMap *)
          Map.empty (module String)
        , (* ref to empty globalMap *)
@@ -23,7 +22,7 @@ let main () =
        , (* ref to last used mangled name *)
          ref 0
        , (* ast *)
-         ast ))
+         ast )) (fun _ -> Shutdown.shutdown 0)
 ;;
 
 let () =

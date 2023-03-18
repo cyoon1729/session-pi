@@ -48,18 +48,17 @@ let getChanByName (chanMap : globalMapType) (pName : int)
 
 let closePi (chanMap : globalMapType) (pName : int) : unit =
   getChanByName chanMap pName
-  >>> fun (r, w, _, _) ->
-    Pipe.close w;
-    Pipe.close_read r
+  >>> fun (r1, w1, r2, w2) ->
+    Pipe.close w1;
+    Pipe.close w2;
+    Pipe.close_read r1;
+    Pipe.close_read r2
 
-let sendPi (chanMap : globalMapType) (pName : int) (data : 'a) : unit =
+let sendPi (chanMap : globalMapType) (pName : int) (data : 'a) : (unit Deferred.t) =
   getChanByName chanMap pName
-  >>> (* the actual value of the channel is deferred *)
+  >>= (* the actual value of the channel is deferred *)
   fun (_, w, _, _) ->
   Pipe.write w data
-  >>> (* block until data fits into pipe *)
-  fun () ->
-  ()
 ;;
 
 let recvPi (chanMap : globalMapType) (pName : int) : 'a Deferred.t =
