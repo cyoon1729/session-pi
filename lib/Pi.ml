@@ -1,11 +1,8 @@
+open Core
 open Async
 
 type name = string
-
 type chan = string
-
-type chanVar = Plus of string
-		     | Minus of string
 
 type typ = 
   | LitInt
@@ -33,18 +30,21 @@ type expr = (* sth that can be sent via channels *)
   | Plus of string
   | Minus of string
 
-type pi = 
+type chanVar = (* channel with polarity *)
+  | Plus of string
+  | Minus of string
+type pi = (* process *)
   | Nil
-  | Print of expr    
-  | Compose of pi * pi  (* P | Q *)
-  | Dot of pi * pi      (* P.Q *)
-  | New of chan * pi    (* (new x) P *)
-  | Send of chanVar * expr
-  | Recv of chanVar * string
-  | Select of name * pi
+  | Print of expr   
+  | Compose of pi * pi       (* P | Q *)
+  | Dot of pi * pi           (* P.Q *)
+  | New of chan * pi         (* (new c) P *)
+  | Send of chanVar * expr   (* c+/c-(x). P *)
+  | Recv of chanVar * string (* c+/c-<x>. P *)
+  | Select of name * pi		 
   | Offer of (name * pi) list
 
-(* the value of a var *)
+(* the value of a var/chan in the globalMap *)
 type value = Strg of string | PiChan of value Pipe.Reader.t * value Pipe.Writer.t
-
-type piChan = {port1 : chan; port2 : chan;}
+(* global map with deferred values *)
+type globalMapType = (int, value Deferred.t, Int.comparator_witness) Map.t
