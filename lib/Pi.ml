@@ -25,17 +25,16 @@ type pattern =
   | PatTup of pattern list
   | Wildcard
 
-type expr =
-  (* sth that can be sent via channels *)
-  | Str of string
-  | Var of string
-  | Plus of string
-  | Minus of string
-
 type chanVar =
   (* channel with polarity *)
   | Plus of string
   | Minus of string
+
+type expr =
+  (* sth that can be sent via channels *)
+  | Str of string
+  | Var of string
+  | ChanVar of chanVar
 
 type pi =
   (* process *)
@@ -52,7 +51,7 @@ type pi =
 (* the value of a var/chan in the globalMap *)
 type value =
   | Strg of string
-  | PiChan of value Pipe.Reader.t * value Pipe.Writer.t
+  | PiChan of value Pipe.Reader.t * value Pipe.Writer.t * value Pipe.Reader.t * value Pipe.Writer.t
 
 (* global map with deferred values *)
 type globalMapType = (int, value Deferred.t, Int.comparator_witness) Map.t
