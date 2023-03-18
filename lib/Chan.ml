@@ -2,41 +2,44 @@ open Core
 open Async
 open Pi
 
-let newPiChan chanMap (cName : name) =
-  let (port1, port2) = (cName ^ "1", cName ^ "2") in
+let newPiChan chanMap (cName : int) =
   let (r1, w1) = Pipe.create () in
   let (r2, w2) = Pipe.create () in
-  let chan = {port1 = port1; port2 = port2;} in
   let newMap = List.fold
-                 [(port1, PiChan (r1, w2)); (port2, PiChan (r2, w1))]
+                 [(cName, Deferred.return (PiChan (r1, w2))); 
+                  (0 - cName, Deferred.return (PiChan (r2, w1)))]
                  ~init:chanMap 
                  ~f:(fun m (k, v) ->
                        match Map.add m ~key:k ~data:v with
                        | `Ok nm -> nm
                        | `Duplicate -> m)
-  in (chan, newMap)
+  in newMap
 
-let getChanByName chanMap (pName : name) = 
-  match Map.find chanMap pName with
-  | None -> raise (Failure("Channel " ^ pName ^ " not found"))
-  | Some v -> v
+let getChanByName chanMap (pName : int) : (value Pipe.Reader.t * value Pipe.Writer.t) Deferred.t = 
+  let v = (match Map.find chanMap pName with
+             | None -> raise (Failure("not in scope"))
+             | Some v -> v) in
+  v >>|
+  (fun v -> match v with
+			 | PiChan (x, y) -> (x, y)
+			 | _ -> raise(Failure("not a channel")))
 
-let closePi chanMap (pName : name) : unit =
+(*
+let closePi chanMap (pName : int) : unit =
   let (r, w) = getChanByName chanMap pName
   in
     Pipe.close w;
     Pipe.close_read r
+*)
 
-let sendPi chanMap (pName : name) data : unit =
-  let (_, w) = getChanByName chanMap pName
-  in
-  Pipe.write w data >>> (* block until data fits into pipe *)
-  fun () -> ()
+let sendPi chanMap (pName : int) data : unit =
+  (getChanByName chanMap pName) >>>
+  (fun (_, w) -> Pipe.write w data >>> (* block until data fits into pipe *)
+  				fun () -> ())
 
-let recvPi chanMap (pName : name) : 'a Deferred.t = 
-  let (r, _) = getChanByName chanMap pName
-  in
-  Pipe.read r >>|
-  function
-  | `Eof -> failwith "EOF"
-  | `Ok data -> data 
+let recvPi chanMap (pName : int) : 'a Deferred.t = 
+  (getChanByName chanMap pName) >>=
+  (fun (r, _) -> Pipe.read r >>|
+				 function
+				 | `Eof -> failwith "EOF"
+				 | `Ok data -> data)

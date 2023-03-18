@@ -6,11 +6,6 @@ open Pi
 let spawn_thread work arg = 
   Core_thread.create ~on_uncaught_exn:`Print_to_stderr work arg
 
-(*
-let writer chanMap port =
-  Chan.sendPi chanMap port "Hello"
-*)
-
 (* NOTE: so we would think `data` here is type `string`, but its actually `'a Deferred.t`.
  *       how do we get the string so that we can print it?
  * resourcs:
@@ -22,38 +17,74 @@ let reader chanMap port =
   printf "%s\n" data
 *)
 
-(*
-let reader chanMap port =
-  Chan.recvPi chanMap port >>> fun x -> printf "%s\n" x
-*)
-
-let rec eval (varMap, ast) = 
+let rec eval (varMap, globalMap, last, ast) = 
   match ast with
   | Nil -> varMap
   | Print e ->
       (match e with
-      | Str s ->
-			printf "%s" s;
-			varMap
-	  | _ -> raise(Failure("TODO")))
+      | Str s -> printf "%s" s
+	  | Var var -> let mangled_var = (match Map.find varMap var with
+             	   					    | None -> raise (Failure("bad name"))
+		                		 	    | Some v -> v) in
+				   let v = (match Map.find !globalMap mangled_var with
+					          | None -> raise (Failure("bad name"))
+             				  | Some v -> v) in
+				   v >>> 
+				   (fun v -> (match v with
+							  	| Strg s -> printf "%s\n" s
+							  	| _ -> raise(Failure("TODO")))
+				   )
+	  | _ -> raise(Failure("TODO"))
+	  );
+	  varMap
   | Compose (p, q) ->
-		let p1 = spawn_thread igneval (varMap, p) in
-		let p2 = spawn_thread igneval (varMap, q) in
+		let p1 = spawn_thread igneval (varMap, globalMap, last, p) in
+		let p2 = spawn_thread igneval (varMap, globalMap, last, q) in
 		Core_thread.join p1;
 		Core_thread.join p2;
 		varMap
   | Dot (p, q) ->
-		let m = eval (varMap, p) in
-		eval (m, q)
-  | New (name, p) ->
-		let (_, m) = Chan.newPiChan varMap name in
-		ignore(eval (m, p));
+		let new_varMap = eval (varMap, globalMap, last, p) in
+		eval (new_varMap, globalMap, last, q)
+  | New (chan, p) ->
+		last := !last + 1;
+		let mangled_chan = !last in
+		let new_varMap = 
+  		  (match (Map.add varMap ~key:chan ~data:mangled_chan) with
+	         | `Ok new_varMap -> new_varMap
+             | `Duplicate -> raise(Failure("shadowing name"))) in
+		globalMap := (Chan.newPiChan !globalMap mangled_chan);
+		eval (new_varMap, globalMap, last, p);
+  | Send (chan, e) -> 
+		let mangled_chan = 
+          (match Map.find varMap chan with
+             | None -> raise (Failure("not in scope"))
+             | Some mangled_chan -> mangled_chan) in
+		(match e with
+		   | Str s -> (Chan.sendPi !globalMap mangled_chan (Strg s))
+		   | _ -> raise (Failure("Send not implemented for this type")));
 		varMap
-  | Send (_, _) -> varMap (* how to send pipe through pipe
-                             when each thread has its own env *)
-  | _ -> raise(Failure("baa"))
-and igneval (varMap, ast) = 
-  ignore(eval (varMap, ast));
+  | Recv (chan, var) ->
+		last := !last + 1;
+		let mangled_var = !last in
+		let new_varMap = 
+          (match (Map.add varMap ~key:var ~data: mangled_var) with
+	         | `Ok new_varMap -> new_varMap
+             | `Duplicate -> raise(Failure("shadowing variable"))) in
+		
+		let mangled_chan = 
+		  (match Map.find varMap chan with
+		     | None -> raise (Failure("not in scope"))
+             | Some mangled_chan -> mangled_chan) in
+		let var_value = (Chan.recvPi !globalMap mangled_chan) in
+		globalMap := (match (Map.add !globalMap ~key:mangled_var ~data:var_value) with
+	            		| `Ok new_globalMap -> new_globalMap
+    		            | `Duplicate -> raise(Failure("shadowing variable")));
+		new_varMap
+  | _ -> raise(Failure("language construct not implemented"))
+
+and igneval (varMap, globalMap, last, ast) = 
+  ignore(eval (varMap, globalMap, last, ast));
   ()
 
 let main () =
@@ -62,29 +93,10 @@ let main () =
                                )
                       )
                 ) in
-  ignore(eval ((Map.empty (module String)), ast));
+  ignore(eval ((Map.empty (module String)), ref (Map.empty (module Int)), ref 0, ast));
   ()
-  (*let chanMap = Map.empty (module String) in
-  let (c, m) = Chan.newPiChan chanMap "test" in
-  let p1 = spawn_thread (fun () -> writer m c.port1) in
-  let p2 = spawn_thread (fun () -> reader m c.port2) in
-  Core_thread.join p1;
-  Core_thread.join p2;*)
-
-(* This works, but we want to call sendPi and recvPi in separate threads
-let main () : unit Deferred.t =
-  let chanMap = Map.empty (module String) in
-  let (c, m) = Chan.newPiChan chanMap "test" Pi.LitString in
-  Chan.sendPi m c.port1 "Hello" >>= fun () ->
-  Chan.recvPi m c.port2 >>= fun x -> printf "%s" x; return () 
-*)
 
 let () =
   main ();
   never_returns (Scheduler.go ())
 
-  (*
-let () =
-  Command.async ~summary:"" (Command.Param.return main)
-  |> Command_unix.run
-*)
