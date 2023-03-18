@@ -39,8 +39,8 @@ type pi = (* process *)
   | Compose of pi * pi       (* P | Q *)
   | Dot of pi * pi           (* P.Q *)
   | New of chan * pi         (* (new c) P *)
-  | Send of chanVar * expr   (* c+/c-(x). P *)
-  | Recv of chanVar * string (* c+/c-<x>. P *)
+  | Send of chanVar * expr   (* c+/c-<x>. P *)
+  | Recv of chanVar * string (* c+/c-(x). P *)
   | Select of name * pi		 
   | Offer of (name * pi) list
 
