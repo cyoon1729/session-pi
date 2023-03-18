@@ -42,10 +42,9 @@ let rec eval (varMap, globalMap, last, ast) =
        in
        (* when decided, print it *)
        v
-       >>> fun v ->
-       (match v with
-        | Strg s -> printf "%s\n" s
-        | _ -> (*TODO*) raise (Failure "not implemented"))
+       >>> (function
+            | Strg s -> printf "%s\n" s
+            | _ -> (*TODO*) raise (Failure "not implemented"))
      | _ -> (* TODO *) raise (Failure "not implemented"));
     Deferred.return varMap
   | Compose (p, q) ->
@@ -110,8 +109,7 @@ let rec eval (varMap, globalMap, last, ast) =
           | `Duplicate -> raise (Failure "shadowing variable"));
     (* if received a channel, add its other polarity to the map as well *)
     var_value
-    >>= fun var_value ->
-    (match var_value with
+    >>= (function
      | PiChan (x, y, z, t) ->
        globalMap
          := (match
@@ -121,10 +119,10 @@ let rec eval (varMap, globalMap, last, ast) =
                  ~data:(Deferred.return (PiChan (z, t, x, y)))
              with
              | `Ok new_globalMap -> new_globalMap
-             | `Duplicate -> raise (Failure "shadowing variable"))
-     | _ -> ());
-    (* force the return into the monadic computation to avoid race conditions *)
-    Deferred.return new_varMap
+             | `Duplicate -> raise (Failure "shadowing variable"));
+       (* force the return into the monadic computation to avoid race conditions *)
+	   Deferred.return new_varMap
+     | _ -> Deferred.return new_varMap);
   | _ -> (* TODO *) raise (Failure "language construct not implemented")
 
 and igneval x = ignore (eval x)
