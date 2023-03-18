@@ -6,5 +6,6 @@ open SessionPi
 
 let () =
   let chanMap = Map.empty (module String) in
-  let (c, m) = Chan.newPiChan chanMap "test" Pi.LitInt in
-  Chan.sendPi m c.port1 234;
+  let c, m = Chan.newPiChan chanMap "test" Pi.LitInt in
+  Chan.sendPi m c.port1 234
+;;
