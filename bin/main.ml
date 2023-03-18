@@ -1,32 +1,20 @@
 open Core
 open SessionPi
 open Async
-open Pi
+open AstPrint
 
 let main () =
   (* TODO: build parser that makes ASTs *)
-
-  (*let ast =
-    New
-      ( "c"
-      , Compose
-          (Send (Plus "c", Str "Hello"), Dot (Recv (Minus "c", "x"), Print (Var "x"))) )
-  in*)
-  let ast =
-    New
-      ( "z"
-      , Compose
-          ( New
-              ( "x"
-              , Compose
-                  ( Send (Minus "x", ChanVar (Plus "z"))
-                  , Dot
-                      ( Recv (Plus "x", "y")
-                      , Dot
-                          ( Send (Minus "y", ChanVar (Plus "x"))
-                          , Dot (Recv (Plus "x", "t"), Print (Var "t")) ) ) ) )
-          , Dot (Recv (Plus "z", "v"), Send (Minus "v", Str "Hello")) ) )
+  let pi1 =
+    "(ν z) ((ν x) (x-!<z+>) | (x+?(y) . y-!<x+> . x+?(t) . print t)) | (z+?(v) . \
+     v-!</hello>)"
   in
+  let lexbuf = Lexing.from_string pi1 in
+  let ast = Parser.pi Lexer.tokenize lexbuf in
+  print_endline "AST: ";
+  print_endline (printPi ast);
+  print_endline "\n ========= \n";
+  print_endline "Execution:";
   ignore
     (Eval.eval
        ( (* empty local varMap *)

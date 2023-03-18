@@ -1,3 +1,7 @@
+(ocamllex Lexer)
+
+(ocamlyacc Parser)
+
 (library
  (name sessionPi)
  (libraries core base async)

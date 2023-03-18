@@ -56,7 +56,7 @@ let rec eval (varMap, globalMap, last, ast) =
     Core_thread.join p1;
     Core_thread.join p2;
     Deferred.return varMap
-  | Dot (p, q) ->
+  | Seq (p, q) ->
     (* execute p and q sequentially and propagate the varMap
 		   through the execution *)
     eval (varMap, globalMap, last, p)
