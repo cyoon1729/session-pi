@@ -9,6 +9,7 @@ rule tokenize = parse
 | "|>" { RIGHTTRI }
 | "|" { BAR }
 | "/" { SLASH }
+| "\"" { DQUOT }
 | "!"   { EMIT }
 | "?"   { ASK }
 | "print"   { PRINT }

@@ -10,9 +10,10 @@
 %type <Pi.expr> expr
 %token <int> NUMBER
 %token <string> VARIABLE
+%token <string> STRING
 
 %token LPAREN RPAREN LSBRACKET RSBRACKET LBRACKET RBRACKET
-%token BAR DOT NU EMIT ASK NIL PRINT SLASH
+%token BAR DOT NU EMIT ASK NIL PRINT SLASH DQUOT
 %token LEFTTRI RIGHTTRI
 %token TRUE FALSE PLUS MINUS QUOT COLON COMMA EOF
 
@@ -32,7 +33,7 @@ atom:
 | PRINT expr                                  { Print($2) }
 | LPAREN pi RPAREN                            { $2 }
 | chan EMIT LSBRACKET expr RSBRACKET          { Send($1, $4) }
-| chan ASK LPAREN VARIABLE RPAREN                 { Recv($1, $4) }
+| chan ASK LPAREN VARIABLE RPAREN             { Recv($1, $4) }
 | chan LEFTTRI VARIABLE                       { Select($1, $3) }
 | chan RIGHTTRI LBRACKET labelledPis RBRACKET { Offer($1, $4) }
 
@@ -40,7 +41,7 @@ expr:
 | NUMBER              { Num($1) }
 | TRUE                { Bool(true) }
 | FALSE               { Bool(false) }
-| SLASH VARIABLE      { Str($2) }
+| DQUOT VARIABLE DQUOT       { Str($2) }
 | VARIABLE            { Var($1) }
 | chan                { ChanVar($1) }
 
