@@ -23,6 +23,7 @@ for now, this should just print "Hello, World!"
 ## Resources we may look into:
 
 #### Fundamental
+- [Linear Type Theory for Asynchronous Session Types](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/linear-type-theory-for-asynchronous-session-types/605DA26DDDE9B1CCD35D33D0D62DF20C) (we should probably read this; seems very foundational)
 - [Foundations of Session Types and Behavioral Contracts](https://dl.acm.org/doi/pdf/10.1145/2873052)
 - [Linearity, session types and pi-calculus](https://www.cambridge.org/core/journals/mathematical-structures-in-computer-science/article/linearity-session-types-and-the-pi-calculus/C636B85EFB70566E982277957504396C) 
 - [Fundamentals of Session Types](https://www.di.fc.ul.pt/~vv/papers/vasconcelos_fundamental-sessions.pdf)
