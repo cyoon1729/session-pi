@@ -136,38 +136,43 @@ let rec eval (varMap, globalMap, last, ast) =
 
 and igneval x = ignore (eval x)
 
-let beta_reduce (e1 : expr) (v : string) (e2 : expr) = 
+let beta_reduce (e1 : expr) (v : string) (e2 : expr) =
   ignore (e1, v, e2);
   raise (Failure "TODO")
+;;
 
-let rec eval_expression (localMap, globalMap, ast) : expr Deferred.t = 
+let rec eval_expression (localMap, globalMap, ast) : expr Deferred.t =
   match ast with
   | EValue value -> Deferred.return (EValue value)
-  | ETup (e1, e2) -> let def_e1 = eval_expression (localMap, globalMap, e1) in
-                     let def_e2 = eval_expression (localMap, globalMap, e2) in
-					 def_e1 >>= fun def_e1 -> 
-                     def_e2 >>= fun def_e2 -> 
-                                ETup (def_e1, def_e2)
-                                |> Deferred.return
-  | EApp (f, arg) -> eval_expression (localMap, globalMap, f)
-                     >>= (function
-                         | EValue ev -> (function
-                                         | Constant c -> ignore(c); raise (Failure "TODO")
-                                         | Lambda ((Variable v), e) -> eval_expression (localMap, globalMap, arg)
-                                                                       >>= fun whnf_arg -> eval_expression (localMap, globalMap,
-                                                                                                            beta_reduce whnf_arg v e)
-                                         | _ -> raise (Failure "this should have failed the type checking")
-                                        ) ev
-                         | _ -> raise (Failure "this should have failed the type checking")
-					     )
-  | _ -> raise (Failure ("TODO"))
+  | ETup (e1, e2) ->
+    let def_e1 = eval_expression (localMap, globalMap, e1) in
+    let def_e2 = eval_expression (localMap, globalMap, e2) in
+    def_e1
+    >>= fun def_e1 -> def_e2 >>= fun def_e2 -> ETup (def_e1, def_e2) |> Deferred.return
+  | EApp (f, arg) ->
+    eval_expression (localMap, globalMap, f)
+    >>= (function
+    | EValue ev ->
+      (function
+       | Constant c ->
+         ignore c;
+         raise (Failure "TODO")
+       | Lambda (Variable v, e) ->
+         eval_expression (localMap, globalMap, arg)
+         >>= fun whnf_arg ->
+         eval_expression (localMap, globalMap, beta_reduce whnf_arg v e)
+       | _ -> raise (Failure "this should have failed the type checking"))
+        ev
+    | _ -> raise (Failure "this should have failed the type checking"))
+  | _ -> raise (Failure "TODO")
+;;
 
 let rec eval_configuration (localMap, globalMap, ast) =
   match ast with
   | CExpr e -> ignore (eval_expression (localMap, globalMap, e))
-  | CPar (c1, c2) -> let p = spawn_thread eval_configuration (localMap, globalMap, c1) in
-                     eval_configuration (localMap, globalMap, c2);
-                     Core_thread.join p
-  | _ -> raise (Failure ("TODO"))
-
-
+  | CPar (c1, c2) ->
+    let p = spawn_thread eval_configuration (localMap, globalMap, c1) in
+    eval_configuration (localMap, globalMap, c2);
+    Core_thread.join p
+  | _ -> raise (Failure "TODO")
+;;
