@@ -20,20 +20,20 @@ type value =
   | Bool of bool
   | Unit
 and data =
-  | Value of value
+  | Value
   | Label of string
 and expr = 
-  | EValue of value 
+  | EValue of value
   | EApp of expr * expr
   | ETup of expr * expr
-  | ESplitTup of identifier * identifier * expr * expr
+  | ELetTup of identifier * identifier * expr * expr
   | ESelect of data * expr
   | ECase of expr * ((identifier * expr) list)
 and configuration = 
-  | CAccessPoint of expr
+  | CExpr of expr
   (* CBufferEndpoint: endpoint c -> (peer endpoint d, buffer size, buffer) *)
   | CBufferEndpoint of identifier * identifier * int * (data list)
-  | C of configuration * configuration
+  | CPar of configuration * configuration
   (* CNewChan: endpoint c -> (peer endpoint d, configuration) *)
   | CNewChan of identifier * identifier * configuration
 and evalContext = (* Eval Context is an expression with a hole *)
@@ -42,6 +42,6 @@ and evalContext = (* Eval Context is an expression with a hole *)
   | HValueApp of value * evalContext 
   | HTup of evalContext * expr 
   | HValueTup of value * evalContext
-  | HSplitTup of identifier * identifier * evalContext * expr
+  | HLetTup of identifier * identifier * evalContext * expr
   | HSelect of identifier * evalContext
   | HCase of ((identifier * expr) list)
