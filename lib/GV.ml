@@ -1,9 +1,8 @@
-
-type Identifier =
+type identifier =
   | ChanEndpoint of string
   | Variable of string
 
-type Constant = 
+type constant = 
   | Fix
   | Fork
   | Request of int   (* int here is the buffer size *) 
@@ -11,43 +10,38 @@ type Constant =
   | Send
   | Receive
 
-type Value = 
-  | Identifier
-  | Constant
-  | Lambda of Variable * Expr
-  | Tup of Value * Value 
+type value = 
+  | Identifier of identifier
+  | Constant of constant
+  | Lambda of identifier * expr
+  | Tup of value * value 
   | Integer of int
   | String of string
   | Bool of bool
   | Unit
-
-type Data =
+and data =
   | Value
   | Label of string
-
-type Expr = 
+and expr = 
   | EValue
-  | EApp of Expr * Expr
-  | ETup of Expr * Expr
-  | ELetTup of Variable * Variable * Expr * Expr
-  | ESelect of Label * Expr
-  | ECase of Expr * ((Label * Expr) list)
-
-type Configuration = 
-  | CAccessPoint of Expr
+  | EApp of expr * expr
+  | ETup of expr * expr
+  | ELetTup of identifier * identifier * expr * expr
+  | ESelect of data * expr
+  | ECase of expr * ((identifier * expr) list)
+and configuration = 
+  | CAccessPoint of expr
   (* CBufferEndpoint: endpoint c -> (peer endpoint d, buffer size, buffer) *)
-  | CBufferEndpoint of ChanEndpoint * ChanEndpoint * int * (Data list)
-  | CUnion of Configuration * Configuration
+  | CBufferEndpoint of identifier * identifier * int * (data list)
+  | CUnion of configuration * configuration
   (* CNewChan: endpoint c -> (peer endpoint d, configuration) *)
-  | CNewChan of ChanEndpoint * ChanEndpoint * Configuration
-
-(* Eval Context is an expression with a hole *)
-type EvalContext = 
+  | CNewChan of identifier * identifier * configuration
+and evalContext = (* Eval Context is an expression with a hole *)
   | Hole
-  | HApp of EvalContext * Expr
-  | HValueApp of Value * EvalContext 
-  | HTup of EvalContext * Expr 
-  | HValueTup of Value * EvalContext
-  | HLetTup of Variable * Variable * EvalContext * Expr
-  | HSelect of Lable * EvalContext
-  | HCase of EvalContext of ((Lable * Expr) list)
+  | HApp of evalContext * expr
+  | HValueApp of value * evalContext 
+  | HTup of evalContext * expr 
+  | HValueTup of value * evalContext
+  | HLetTup of identifier * identifier * evalContext * expr
+  | HSelect of identifier * evalContext
+  | HCase of ((identifier * expr) list)
