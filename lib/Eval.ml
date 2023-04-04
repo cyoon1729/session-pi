@@ -1,11 +1,12 @@
 open Core
 open Async
-open Pi
+(*open Pi*)
 open GV
 
 (* C-style thread creation; pass function and argument *)
 let spawn_thread work arg = Core_thread.create ~on_uncaught_exn:`Print_to_stderr work arg
 
+(*
 let mangledChanName varMap chanVar =
   let chan, sign =
     match chanVar with
@@ -135,6 +136,7 @@ let rec eval (varMap, globalMap, last, ast) =
   | _ -> (* TODO *) raise (Failure "language construct not implemented")
 
 and igneval x = ignore (eval x)
+*)
 
 let beta_reduce (e1 : expr) (v : string) (e2 : expr) =
   ignore (e1, v, e2);
@@ -167,6 +169,16 @@ let rec eval_expression (localMap, globalMap, ast) : expr Deferred.t =
   | _ -> raise (Failure "TODO")
 ;;
 
+let last = ref 0
+let nextMangled () = 
+  last := !last + 1;
+  !last
+
+let insertLocalEndpoint (c, v) localMap = 
+  match Map.add localMap ~key:c ~data:v with
+  | `Ok localMap' -> localMap'
+  | `Duplicate -> raise (Failure "shadowing name")
+
 let rec eval_configuration (localMap, globalMap, ast) =
   match ast with
   | CExpr e -> ignore (eval_expression (localMap, globalMap, e))
@@ -174,5 +186,14 @@ let rec eval_configuration (localMap, globalMap, ast) =
     let p = spawn_thread eval_configuration (localMap, globalMap, c1) in
     eval_configuration (localMap, globalMap, c2);
     Core_thread.join p
+  | CNewChan (ChanEndpoint xplus, ChanEndpoint xminus, c) ->
+    let mangled_chan = nextMangled () in
+    let localMap' = 
+      localMap
+      |> insertLocalEndpoint (xplus, mangled_chan)
+      |> insertLocalEndpoint (xminus, -mangled_chan) 
+	in
+    globalMap := Chan.newPiChan !globalMap mangled_chan;
+	eval_configuration (localMap', globalMap, c)
   | _ -> raise (Failure "TODO")
 ;;
