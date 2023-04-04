@@ -3,10 +3,12 @@ open Async
 open GV
 
 let globalMapAdd (var : int) (value : mapValue Deferred.t) (globalMap : globalMapType)
-          : globalMapType =
+  : globalMapType
+  =
   match Map.add globalMap ~key:var ~data:value with
   | `Ok nm -> nm
   | `Duplicate -> raise (Failure "name shadowing")
+;;
 
 let newPiChan (globalMap : globalMapType) (cName : int) : globalMapType =
   (* create two half-duplex pipep *)
@@ -16,7 +18,7 @@ let newPiChan (globalMap : globalMapType) (cName : int) : globalMapType =
 		the + one corresponds to the positive mangled value
 		the - one corresponds to the negative mangled value *)
   globalMap
-  |> globalMapAdd cName    (Deferred.return (PiChan (r1, w2, r2, w1)))
+  |> globalMapAdd cName (Deferred.return (PiChan (r1, w2, r2, w1)))
   |> globalMapAdd (-cName) (Deferred.return (PiChan (r2, w1, r1, w2)))
 ;;
 

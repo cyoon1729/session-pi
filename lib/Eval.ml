@@ -1,5 +1,6 @@
 open Core
 open Async
+
 (*open Pi*)
 open GV
 
@@ -138,69 +139,66 @@ let rec eval (varMap, globalMap, last, ast) =
 and igneval x = ignore (eval x)
 *)
 
-
 let last = ref 0
-let nextMangled () = 
+
+let nextMangled () =
   last := !last + 1;
   !last
+;;
 
-let rec beta_reduce_id (id : identifier) (var : string) (mangled_var : int) : identifier = 
+let rec beta_reduce_id (var : string) (mangled_var : int) (id : identifier) : identifier =
   match id with
-  | ChanEndpoint c -> 
-     if String.equal c var
-     then Binding mangled_var
-     else ChanEndpoint c
-  | Variable v -> 
-     if String.equal v var
-     then Binding mangled_var
-     else Variable v
+  | ChanEndpoint c -> if String.equal c var then Binding mangled_var else ChanEndpoint c
+  | Variable v -> if String.equal v var then Binding mangled_var else Variable v
   | Binding b -> Binding b
 
-and beta_reduce_value (value : value) (var : string) (mangled_var : int) : value = 
+and beta_reduce_value (var : string) (mangled_var : int) (value : value) : value =
   match value with
-  | Identifier id -> 
-     Identifier (beta_reduce_id id var mangled_var)
+  | Identifier id -> Identifier (beta_reduce_id var mangled_var id)
   | Constant c -> Constant c
-  | Lambda (Variable v, e) -> 
-     if String.equal v var
-     then Lambda (Variable v, e)
-	 else Lambda (Variable v, beta_reduce_expression e var mangled_var)
+  | Lambda (Variable v, e) ->
+    if String.equal v var
+    then Lambda (Variable v, e)
+    else Lambda (Variable v, beta_reduce_expression var mangled_var e)
   | Lambda _ -> raise (Failure "this should have failed the type checking")
-  | Tup (v, w) -> 
-     let v' = beta_reduce_value v var mangled_var in
-     let w' = beta_reduce_value w var mangled_var in
-     Tup (v', w')
-  | Integer i  -> Integer i
-  | String s   -> String s
-  | Bool b     -> Bool b
-  | Unit       -> Unit
+  | Tup (v, w) ->
+    let v' = beta_reduce_value var mangled_var v in
+    let w' = beta_reduce_value var mangled_var w in
+    Tup (v', w')
+  | Integer i -> Integer i
+  | String s -> String s
+  | Bool b -> Bool b
+  | Unit -> Unit
 
-and beta_reduce_expression (e1 : expr) (var : string) (mangled_var : int) : expr = 
+and beta_reduce_expression (var : string) (mangled_var : int) (e1 : expr) : expr =
   match e1 with
-  | EValue value -> EValue (beta_reduce_value value var mangled_var)
+  | EValue value -> EValue (beta_reduce_value var mangled_var value)
   | EApp (e, f) ->
-     let e' = beta_reduce_expression e var mangled_var in
-     let f' = beta_reduce_expression f var mangled_var in
-     EApp (e', f')
+    let e' = beta_reduce_expression var mangled_var e in
+    let f' = beta_reduce_expression var mangled_var f in
+    EApp (e', f')
   | ETup (e, f) ->
-     let e' = beta_reduce_expression e var mangled_var in
-     let f' = beta_reduce_expression f var mangled_var in
-     ETup (e', f')
+    let e' = beta_reduce_expression var mangled_var e in
+    let f' = beta_reduce_expression var mangled_var f in
+    ETup (e', f')
   | ELetTup _ -> raise (Failure "TODO")
   | ESelect _ -> raise (Failure "TODO")
-  | ECase   _ -> raise (Failure "TODO")
+  | ECase _ -> raise (Failure "TODO")
 
-and beta_reduce_config (var : string) (mangled_var : int) (c : configuration) : configuration = 
+and beta_reduce_config (var : string) (mangled_var : int) (c : configuration)
+  : configuration
+  =
   match c with
-  | CExpr e -> CExpr (beta_reduce_expression e var mangled_var)
+  | CExpr e -> CExpr (beta_reduce_expression var mangled_var e)
   | CBufferEndpoint _ -> raise (Failure "TODO")
   | CPar (c1, c2) ->
-     let c1' = beta_reduce_config var mangled_var c1 in
-     let c2' = beta_reduce_config var mangled_var c2 in
-	 CPar (c1', c2')
+    let c1' = beta_reduce_config var mangled_var c1 in
+    let c2' = beta_reduce_config var mangled_var c2 in
+    CPar (c1', c2')
   | CNewChan (id1, id2, c1) ->
-     let c1' = beta_reduce_config var mangled_var c1 in
-	 CNewChan (id1, id2, c1')
+    let c1' = beta_reduce_config var mangled_var c1 in
+    CNewChan (id1, id2, c1')
+;;
 
 let rec eval_expression (globalMap, ast) : expr Deferred.t =
   match ast with
@@ -215,18 +213,15 @@ let rec eval_expression (globalMap, ast) : expr Deferred.t =
     >>= (function
     | EValue ev ->
       (match ev with
-       | Identifier _ ->
-         raise (Failure "TODO")
-       | Constant _ ->
-         raise (Failure "TODO")
+       | Identifier _ -> raise (Failure "TODO")
+       | Constant _ -> raise (Failure "TODO")
        | Lambda (Variable var, e) ->
          eval_expression (globalMap, arg)
          >>= fun whnf_arg ->
          let mangled_var = nextMangled () in
-         globalMap := Chan.globalMapAdd mangled_var 
-                                        (Deferred.return (Ast whnf_arg)) 
-                                        (!globalMap);
-         eval_expression (globalMap, beta_reduce_expression e var mangled_var)
+         globalMap
+           := Chan.globalMapAdd mangled_var (Deferred.return (Ast whnf_arg)) !globalMap;
+         eval_expression (globalMap, beta_reduce_expression var mangled_var e)
        | _ -> raise (Failure "this should have failed the type checking"))
     | _ -> raise (Failure "this should have failed the type checking"))
   | _ -> raise (Failure "TODO")
@@ -242,9 +237,11 @@ let rec eval_configuration (globalMap, ast) =
   | CNewChan (ChanEndpoint xplus, ChanEndpoint xminus, c) ->
     let mangled_chan = nextMangled () in
     globalMap := Chan.newPiChan !globalMap mangled_chan;
-    let c' = c
-    |> beta_reduce_config xplus mangled_chan
-    |> beta_reduce_config xminus (-mangled_chan)
-    in eval_configuration (globalMap, c')
+    let c' =
+      c
+      |> beta_reduce_config xplus mangled_chan
+      |> beta_reduce_config xminus (-mangled_chan)
+    in
+    eval_configuration (globalMap, c')
   | _ -> raise (Failure "TODO")
 ;;
