@@ -181,16 +181,17 @@ and beta_reduce_expression (var : string) (mangled_var : int) (e1 : expr) : expr
     let e' = beta_reduce_expression var mangled_var e in
     let f' = beta_reduce_expression var mangled_var f in
     ETup (e', f')
-  | ELetTup _ -> raise (Failure "TODO")
-  | ESelect _ -> raise (Failure "TODO")
-  | ECase _ -> raise (Failure "TODO")
+  | ELet _ -> raise (Failure "TODO") (* TODO*)
+  | ELetTup _ -> raise (Failure "TODO") (* TODO *)
+  | ESelect _ -> raise (Failure "TODO") (* TODO *)
+  | ECase _ -> raise (Failure "TODO") (* TODO *)
 
 and beta_reduce_config (var : string) (mangled_var : int) (c : configuration)
   : configuration
   =
   match c with
   | CExpr e -> CExpr (beta_reduce_expression var mangled_var e)
-  | CBufferEndpoint _ -> raise (Failure "TODO")
+  | CBufferEndpoint _ -> raise (Failure "TODO") (* TODO *)
   | CPar (c1, c2) ->
     let c1' = beta_reduce_config var mangled_var c1 in
     let c2' = beta_reduce_config var mangled_var c2 in
@@ -213,8 +214,8 @@ let rec eval_expression (globalMap, ast) : expr Deferred.t =
     >>= (function
     | EValue ev ->
       (match ev with
-       | Identifier _ -> raise (Failure "TODO")
-       | Constant _ -> raise (Failure "TODO")
+       | Identifier _ -> raise (Failure "TODO") (* TODO *)
+       | Constant _ -> raise (Failure "TODO") (* TODO *)
        | Lambda (Variable var, e) ->
          eval_expression (globalMap, arg)
          >>= fun whnf_arg ->
@@ -224,7 +225,11 @@ let rec eval_expression (globalMap, ast) : expr Deferred.t =
          eval_expression (globalMap, beta_reduce_expression var mangled_var e)
        | _ -> raise (Failure "this should have failed the type checking"))
     | _ -> raise (Failure "this should have failed the type checking"))
-  | _ -> raise (Failure "TODO")
+  | ELet (id, e, f) -> 
+    eval_expression (globalMap, EApp(EValue (Lambda (id, f)), e))
+  | ELetTup _ -> raise (Failure "TODO") (* TODO *)
+  | ESelect _ -> raise (Failure "TODO") (* TODO *)
+  | ECase _ -> raise (Failure "TODO") (* TODO *)
 ;;
 
 let rec eval_configuration (globalMap, ast) =
@@ -243,5 +248,6 @@ let rec eval_configuration (globalMap, ast) =
       |> beta_reduce_config xminus (-mangled_chan)
     in
     eval_configuration (globalMap, c')
-  | _ -> raise (Failure "TODO")
+  | CNewChan _ -> raise (Failure "this should have failed the type checking")
+  | CBufferEndpoint _ -> raise (Failure "TODO") (* TODO *)
 ;;

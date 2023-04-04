@@ -32,6 +32,7 @@ and expr =
   | EValue of value
   | EApp of expr * expr
   | ETup of expr * expr
+  | ELet of identifier * expr * expr
   | ELetTup of identifier * identifier * expr * expr
   | ESelect of data * expr
   | ECase of expr * (identifier * expr) list
