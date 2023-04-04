@@ -1,6 +1,10 @@
+open Core
+open Async
+
 type identifier =
   | ChanEndpoint of string
   | Variable of string
+  | Binding of int
 
 type constant =
   | Fix
@@ -50,3 +54,15 @@ and evalContext =
   | HLetTup of identifier * identifier * evalContext * expr
   | HSelect of identifier * evalContext
   | HCase of (identifier * expr) list
+
+(* the value of a var/chan in the globalMap *)
+type mapValue =
+  | Ast of expr
+  | PiChan of
+      mapValue Pipe.Reader.t
+      * mapValue Pipe.Writer.t
+      * mapValue Pipe.Reader.t
+      * mapValue Pipe.Writer.t
+
+(* global map with deferred values *)
+type globalMapType = (int, mapValue Deferred.t, Int.comparator_witness) Map.t

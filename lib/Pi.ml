@@ -51,7 +51,7 @@ and branch = Branch of string * pi
 
 (* the value of a var/chan in the globalMap *)
 type value =
-  | Strg of string
+  | Ast of expr
   | PiChan of
       value Pipe.Reader.t
       * value Pipe.Writer.t

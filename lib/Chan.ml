@@ -1,31 +1,26 @@
 open Core
 open Async
-open Pi
+open GV
 
-let newPiChan (chanMap : globalMapType) (cName : int) : globalMapType =
+let globalMapAdd (var : int) (value : mapValue Deferred.t) (globalMap : globalMapType)
+          : globalMapType =
+  match Map.add globalMap ~key:var ~data:value with
+  | `Ok nm -> nm
+  | `Duplicate -> raise (Failure "name shadowing")
+
+let newPiChan (globalMap : globalMapType) (cName : int) : globalMapType =
+  (* create two half-duplex pipep *)
   let r1, w1 = Pipe.create () in
-  (* create one half-duplex pipe *)
   let r2, w2 = Pipe.create () in
-  (* create another half-duplex pipe *)
   (* each channel has two polarities; 
 		the + one corresponds to the positive mangled value
 		the - one corresponds to the negative mangled value *)
-  let newMap =
-    List.fold
-      [ cName, Deferred.return (PiChan (r1, w2, r2, w1))
-      ; (* add + end *)
-        -cName, Deferred.return (PiChan (r2, w1, r1, w2))
-      ]
-      (* add - end *)
-      ~init:chanMap
-      ~f:(fun m (k, v) ->
-        match Map.add m ~key:k ~data:v with
-        | `Ok nm -> nm
-        | `Duplicate -> m)
-  in
-  newMap
+  globalMap
+  |> globalMapAdd cName    (Deferred.return (PiChan (r1, w2, r2, w1)))
+  |> globalMapAdd (-cName) (Deferred.return (PiChan (r2, w1, r1, w2)))
 ;;
 
+(*
 let getChanByName (chanMap : globalMapType) (pName : int)
   : (value Pipe.Reader.t
     * value Pipe.Writer.t
@@ -71,3 +66,4 @@ let recvPi (chanMap : globalMapType) (pName : int) : 'a Deferred.t =
   | `Eof -> failwith "EOF"
   | `Ok data -> data
 ;;
+*)

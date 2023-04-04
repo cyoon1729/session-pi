@@ -138,62 +138,113 @@ let rec eval (varMap, globalMap, last, ast) =
 and igneval x = ignore (eval x)
 *)
 
-let beta_reduce (e1 : expr) (v : string) (e2 : expr) =
-  ignore (e1, v, e2);
-  raise (Failure "TODO")
-;;
-
-let rec eval_expression (localMap, globalMap, ast) : expr Deferred.t =
-  match ast with
-  | EValue value -> Deferred.return (EValue value)
-  | ETup (e1, e2) ->
-    let def_e1 = eval_expression (localMap, globalMap, e1) in
-    let def_e2 = eval_expression (localMap, globalMap, e2) in
-    def_e1
-    >>= fun def_e1 -> def_e2 >>= fun def_e2 -> ETup (def_e1, def_e2) |> Deferred.return
-  | EApp (f, arg) ->
-    eval_expression (localMap, globalMap, f)
-    >>= (function
-    | EValue ev ->
-      (function
-       | Constant c ->
-         ignore c;
-         raise (Failure "TODO")
-       | Lambda (Variable v, e) ->
-         eval_expression (localMap, globalMap, arg)
-         >>= fun whnf_arg ->
-         eval_expression (localMap, globalMap, beta_reduce whnf_arg v e)
-       | _ -> raise (Failure "this should have failed the type checking"))
-        ev
-    | _ -> raise (Failure "this should have failed the type checking"))
-  | _ -> raise (Failure "TODO")
-;;
 
 let last = ref 0
 let nextMangled () = 
   last := !last + 1;
   !last
 
-let insertLocalEndpoint (c, v) localMap = 
-  match Map.add localMap ~key:c ~data:v with
-  | `Ok localMap' -> localMap'
-  | `Duplicate -> raise (Failure "shadowing name")
+let rec beta_reduce_id (id : identifier) (var : string) (mangled_var : int) : identifier = 
+  match id with
+  | ChanEndpoint c -> 
+     if String.equal c var
+     then Binding mangled_var
+     else ChanEndpoint c
+  | Variable v -> 
+     if String.equal v var
+     then Binding mangled_var
+     else Variable v
+  | Binding b -> Binding b
 
-let rec eval_configuration (localMap, globalMap, ast) =
-  match ast with
-  | CExpr e -> ignore (eval_expression (localMap, globalMap, e))
+and beta_reduce_value (value : value) (var : string) (mangled_var : int) : value = 
+  match value with
+  | Identifier id -> 
+     Identifier (beta_reduce_id id var mangled_var)
+  | Constant c -> Constant c
+  | Lambda (Variable v, e) -> 
+     if String.equal v var
+     then Lambda (Variable v, e)
+	 else Lambda (Variable v, beta_reduce_expression e var mangled_var)
+  | Lambda _ -> raise (Failure "this should have failed the type checking")
+  | Tup (v, w) -> 
+     let v' = beta_reduce_value v var mangled_var in
+     let w' = beta_reduce_value w var mangled_var in
+     Tup (v', w')
+  | Integer i  -> Integer i
+  | String s   -> String s
+  | Bool b     -> Bool b
+  | Unit       -> Unit
+
+and beta_reduce_expression (e1 : expr) (var : string) (mangled_var : int) : expr = 
+  match e1 with
+  | EValue value -> EValue (beta_reduce_value value var mangled_var)
+  | EApp (e, f) ->
+     let e' = beta_reduce_expression e var mangled_var in
+     let f' = beta_reduce_expression f var mangled_var in
+     EApp (e', f')
+  | ETup (e, f) ->
+     let e' = beta_reduce_expression e var mangled_var in
+     let f' = beta_reduce_expression f var mangled_var in
+     ETup (e', f')
+  | ELetTup _ -> raise (Failure "TODO")
+  | ESelect _ -> raise (Failure "TODO")
+  | ECase   _ -> raise (Failure "TODO")
+
+and beta_reduce_config (var : string) (mangled_var : int) (c : configuration) : configuration = 
+  match c with
+  | CExpr e -> CExpr (beta_reduce_expression e var mangled_var)
+  | CBufferEndpoint _ -> raise (Failure "TODO")
   | CPar (c1, c2) ->
-    let p = spawn_thread eval_configuration (localMap, globalMap, c1) in
-    eval_configuration (localMap, globalMap, c2);
+     let c1' = beta_reduce_config var mangled_var c1 in
+     let c2' = beta_reduce_config var mangled_var c2 in
+	 CPar (c1', c2')
+  | CNewChan (id1, id2, c1) ->
+     let c1' = beta_reduce_config var mangled_var c1 in
+	 CNewChan (id1, id2, c1')
+
+let rec eval_expression (globalMap, ast) : expr Deferred.t =
+  match ast with
+  | EValue value -> Deferred.return (EValue value)
+  | ETup (e1, e2) ->
+    let def_e1 = eval_expression (globalMap, e1) in
+    let def_e2 = eval_expression (globalMap, e2) in
+    def_e1
+    >>= fun def_e1 -> def_e2 >>= fun def_e2 -> ETup (def_e1, def_e2) |> Deferred.return
+  | EApp (f, arg) ->
+    eval_expression (globalMap, f)
+    >>= (function
+    | EValue ev ->
+      (match ev with
+       | Identifier _ ->
+         raise (Failure "TODO")
+       | Constant _ ->
+         raise (Failure "TODO")
+       | Lambda (Variable var, e) ->
+         eval_expression (globalMap, arg)
+         >>= fun whnf_arg ->
+         let mangled_var = nextMangled () in
+         globalMap := Chan.globalMapAdd mangled_var 
+                                        (Deferred.return (Ast whnf_arg)) 
+                                        (!globalMap);
+         eval_expression (globalMap, beta_reduce_expression e var mangled_var)
+       | _ -> raise (Failure "this should have failed the type checking"))
+    | _ -> raise (Failure "this should have failed the type checking"))
+  | _ -> raise (Failure "TODO")
+;;
+
+let rec eval_configuration (globalMap, ast) =
+  match ast with
+  | CExpr e -> ignore (eval_expression (globalMap, e))
+  | CPar (c1, c2) ->
+    let p = spawn_thread eval_configuration (globalMap, c1) in
+    eval_configuration (globalMap, c2);
     Core_thread.join p
   | CNewChan (ChanEndpoint xplus, ChanEndpoint xminus, c) ->
     let mangled_chan = nextMangled () in
-    let localMap' = 
-      localMap
-      |> insertLocalEndpoint (xplus, mangled_chan)
-      |> insertLocalEndpoint (xminus, -mangled_chan) 
-	in
     globalMap := Chan.newPiChan !globalMap mangled_chan;
-	eval_configuration (localMap', globalMap, c)
+    let c' = c
+    |> beta_reduce_config xplus mangled_chan
+    |> beta_reduce_config xminus (-mangled_chan)
+    in eval_configuration (globalMap, c')
   | _ -> raise (Failure "TODO")
 ;;
