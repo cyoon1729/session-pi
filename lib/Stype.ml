@@ -1,3 +1,4 @@
+open Base
 open Core
 
 (* p. 198 *)
@@ -70,7 +71,30 @@ let tTypeSub (n : Pi.tType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
   tSub n x t
 ;;
 
-(*
-let rec subtype (t1 : Pi.tType) (t2 : Pi.tType) : bool = 
-  ...
-*)
+(* p. 214 *)
+(* call as sTypeSubC [] [] t1 t2 *)
+let rec sTypeSubC (sSigma : (Pi.sType * Pi.sType) list) 
+                  (tSigma : (Pi.tType * Pi.tType) list) 
+                  (s1 : Pi.sType) (s2 : Pi.sType) : bool = 
+  match List.exists sSigma ~f:(fun (a, b) -> (Poly.(=) a s1) && (Poly.(=) b s2)) with
+  | true -> true (* AS-ASSUMP *)
+  | false -> 
+    (match (s1, s2) with
+     | (SEnd, SEnd) -> true (* AS-END *)
+     | (SMu (x, t), u) -> (* AS-RECL *)
+       sTypeSubC ((s1, s2) :: sSigma) tSigma (sTypeSub s1 x t) u
+     | (t, SMu (x, u)) -> (* AS-RECR *)
+       sTypeSubC ((s1, s2) :: sSigma) tSigma t (sTypeSub s2 x u)
+     | (SInput (ts, v), SInput (us, w)) -> (* AS-INS *)
+       (sTypeSubC sSigma tSigma v w) && 
+       (List.for_all2_exn ts us ~f:(tTypeSubC sSigma tSigma))
+     | (SOutput (ts, v), SOutput (us, w)) -> (* AS-OUTS *)
+       (sTypeSubC sSigma tSigma v w) && 
+       (List.for_all2_exn us ts ~f:(tTypeSubC sSigma tSigma))
+     | (SBranch labs1, SBranch labs2) ->
+       (* TODO *)
+    )
+and tTypeSubC (sSigma : (Pi.sType * Pi.sType) list) 
+              (tSigma : (Pi.tType * Pi.tType) list) 
+              (t1 : Pi.tType) (t2 : Pi.tType) : bool = 
+  ignore(sSigma, tSigma, t1, t2); true
