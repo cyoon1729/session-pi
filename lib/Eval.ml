@@ -53,4 +53,64 @@ let rec eval
      | false, _, _ -> raise (Failure "channel not used completely")
      | _, false, _ -> raise (Failure "channel not used completely")
      | _, _, false -> raise (Failure "channol cannot have end type"))
+  | PInput (tvx, ys, p) ->
+    (* multiplex on input rules *)
+    (match Map.Poly.find gamma (Name tvx) with
+     | Some (NChan ts) ->
+       (* TC-IN *)
+       (* By Lemma 16, if we get here, x+ and x- cannot be in the environment,
+          so it is safe to make the decision here *)
+       let gamma' =
+         List.fold ys ~init:gamma ~f:(fun gamma (n, t) ->
+           Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
+       in
+       let ySess =
+         List.filter_map ys ~f:(fun (n, t) ->
+           match t with
+           | SType _ -> Some (Name n)
+           | _ -> None)
+         |> Set.Poly.of_list
+       in
+       let x' = Set.Poly.union x ySess in
+       let y = eval gamma' x' p in
+       if Set.Poly.is_subset ySess ~of_:y
+       then (
+         let us = List.map ys ~f:snd in
+         if List.for_all2_exn ts us ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty)
+         then Set.Poly.diff y ySess
+         else raise (Failure "in-types invalid"))
+       else raise (Failure "in-names not used completely")
+     | Some (SType (SInput (ts, s))) ->
+       (* TC-INS1 *)
+       (* By Lemma 16, if we get here, x+ and x- cannot be in the environment,
+          so it is safe to make the decision here *)
+       let gamma'' = Map.Poly.set gamma ~key:(Name tvx) ~data:(SType s) in
+       let gamma' =
+         List.fold ys ~init:gamma'' ~f:(fun gamma (n, t) ->
+           Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
+       in
+       let ySess =
+         List.filter_map ys ~f:(fun (n, t) ->
+           match t with
+           | SType _ -> Some (Name n)
+           | _ -> None)
+         |> Set.Poly.of_list
+       in
+       let x' = Set.Poly.union x ySess in
+       let y = eval gamma' x' p in
+       if Set.Poly.is_subset ySess ~of_:y
+       then (
+         let us = List.map ys ~f:snd in
+         if List.for_all2_exn ts us ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty)
+         then
+           if Set.Poly.mem x (Name tvx) && Set.Poly.mem y (Name tvx)
+           then Set.Poly.diff y ySess
+           else raise (Failure "channel name not available or not used")
+         else raise (Failure "in-types invalid"))
+       else raise (Failure "in-names not used completely")
+     | Some _ -> raise (Failure "invalid channel type")
+     | None ->
+       (* TC-INS2/3 *)
+       raise (Failure "TODO")
+       (*TODO*))
 ;;

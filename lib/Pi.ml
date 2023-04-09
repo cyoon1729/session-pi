@@ -12,6 +12,7 @@ type sType =
   | SMu of typeVar * sType
 
 and tType =
+  | Int
   | TTypeVar of typeVar
   | SType of sType
   | NChan of tType list
@@ -22,6 +23,7 @@ and tType =
 type name = string
 
 type process =
+  (* TODO: integrate ints into the language *)
   | PEnd
   | Par of process * process
   | Rep of process

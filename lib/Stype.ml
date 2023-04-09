@@ -30,6 +30,7 @@ let sTypeSub (n : Pi.sType) (x : Pi.typeVar) (s : Pi.sType) : Pi.sType =
       else SMu (tv, sSub n x s')
   and tSub (n : Pi.sType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
     match t with
+    | Int -> Int
     | TTypeVar y ->
       if String.equal y x then raise (Failure "error: invalid type") else TTypeVar y
     | SType s -> SType (sSub n x s)
@@ -47,6 +48,7 @@ let sTypeSub (n : Pi.sType) (x : Pi.typeVar) (s : Pi.sType) : Pi.sType =
 let tTypeSub (n : Pi.tType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
   let rec tSub (n : Pi.tType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
     match t with
+    | Int -> Int
     | TTypeVar y -> if String.equal y x then n else TTypeVar y
     | SType s -> SType (sSub n x s)
     | NChan ts -> NChan (List.map ~f:(tSub n x) ts)
@@ -144,6 +146,7 @@ and tTypeSubC
   | true -> true (* AS-ASSUMP *)
   | false ->
     (match t1, t2 with
+     | Int, Int -> true
      | SType s1, SType s2 ->
        (* Here, the paper confuses regular types with session types;
           in order to build the parser, need to add the `SType` wrapper;
