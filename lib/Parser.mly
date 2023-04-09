@@ -3,56 +3,71 @@
    open List
 %}
 
-%left BAR DOT
+%left REP
+%left DOT
 
 %start pi
-%type <Pi.pi> pi
-%type <Pi.expr> expr
-%token <int> NUMBER
+%type <Pi.process> pi
+%token <Pi.name> NAME
+%token <Pi.label> LABEL
+%token <Pi.typeVar> TYPEVAR
+
 %token <string> VARIABLE
 %token <string> STRING
 
-%token LPAREN RPAREN LSBRACKET RSBRACKET LBRACKET RBRACKET
-%token BAR DOT NU EMIT ASK NIL PRINT SLASH DQUOT
-%token LEFTTRI RIGHTTRI
-%token TRUE FALSE PLUS MINUS QUOT COLON COMMA EOF
+%token LPAREN RPAREN LSQUARE RSQUARE LBRACKET RBRACKET
+%token ZERO BAR DOT NU REP ASK LEFTTRI RIGHTTRI
+%token COMMA COLON
+%token END LSBRACKET RSBRACKET BRANCH CHOICE HAT TICK MU
+%token EOF
 
 %%
 
-pi:
-| compAtom									  { $1 }
-| compAtom BAR pi                             { Compose($1, $3) }
+sType:
+| TYPEVAR                                      { STypeVar $1 }
+| END                                          { SEnd }
+| ASK LBRACKET tTypeList RBRACKET DOT sType    { SInput ($3, $6) }
+| REP LBRACKET tTypeList RBRACKET DOT sType    { SOutput ($3, $6) }
+| BRANCH LSBRACKET sTypeLabels RSBRACKET       { SBranch $3 }
+| CHOICE LSBRACKET sTypeLabels RSBRACKET       { SChoice $3 }
+| MU TYPEVAR DOT sType                         { SMu ($2, $4) }
 
-compAtom:
-| atom                                        { $1 }
-| atom DOT compAtom                           { Seq($1, $3) }
-| LPAREN NU VARIABLE RPAREN compAtom          { New($3, $5) }
+sTypeLabels:
+| LABEL COLON sType                            { [($1, $3)] }
+| LABEL COLON sType COMMA sTypeLabels          { ($1, $3) :: $5 }
+
+tType:
+| TYPEVAR                                      { TTypeVar $1 }
+| TICK LSQUARE sType RSQUARE                   { SType $3 }
+| HAT LSQUARE tTypeList RSQUARE                { NChan $3 }
+| MU TYPEVAR DOT tType                         { TMu ($2, $4) }
+
+tTypeList:
+| tType                                        { [$1] }
+| tType COMMA tTypeList                        { $1 :: $3 }
+
+pi:
+| atom   								 	   { $1 }
+| atom BAR pi                                  { Par ($1, $3) }
 
 atom:
-| NIL                                         { Nil }
-| PRINT expr                                  { Print($2) }
-| LPAREN pi RPAREN                            { $2 }
-| chan EMIT LSBRACKET expr RSBRACKET          { Send($1, $4) }
-| chan ASK LPAREN VARIABLE RPAREN             { Recv($1, $4) }
-| chan LEFTTRI VARIABLE                       { Select($1, $3) }
-| chan RIGHTTRI LBRACKET labelledPis RBRACKET { Offer($1, $4) }
+| ZERO                                         { PEnd }
+| REP atom                                     { Rep $2 }
+| NAME ASK LSQUARE inputArgs RSQUARE DOT atom  { PInput ($1, $4, $7) }
+| NAME REP LSQUARE outputArgs RSQUARE DOT atom { POutput ($1, $4, $7) }
+| LPAREN NU NAME COLON tType RPAREN atom       { New ($3, $5, $7) }
+| NAME RIGHTTRI LBRACKET branchArgs RBRACKET   { PBranch ($1, $4) }
+| NAME LEFTTRI LABEL DOT atom                  { PChoice ($1, $3, $5) }
+| LPAREN pi RPAREN                             { $2 }
 
-expr:
-| NUMBER              { Num($1) }
-| TRUE                { Bool(true) }
-| FALSE               { Bool(false) }
-| DQUOT VARIABLE DQUOT       { Str($2) }
-| VARIABLE            { Var($1) }
-| chan                { ChanVar($1) }
+inputArgs:
+| NAME COLON tType                             { [($1, $3)] }
+| NAME COLON tType COMMA inputArgs             { ($1, $3) :: $5 }
 
-chan:
-| VARIABLE PLUS  { Plus($1) }
-| VARIABLE MINUS { Minus($1) }
+outputArgs:
+| NAME                                         { [$1] }
+| NAME COMMA outputArgs                        { $1 :: $3 }
 
-labelledPi:
-| VARIABLE COLON pi { Branch($1, $3) }
-
-labelledPis:
-|                              { [] }
-| labelledPi                   { [$1] }
-| labelledPi COMMA labelledPis { ($1)::($3) }
+branchArgs:
+| LABEL COLON pi                               { [($1, $3)] }
+| LABEL COLON pi COMMA branchArgs              { ($1, $3) :: $5 }

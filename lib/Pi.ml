@@ -1,62 +1,31 @@
-open Core
-open Async
 
-type typ =
-  | LitInt
-  | LitBool
-  | LitChar
-  | LitString
-  | TChan of typ
-  | TChanTup of typ list
-  | SessTyp
+(* p. 197 *)
+type label = string
+type typeVar = string
+type sType = 
+  | STypeVar of typeVar
+  | SEnd
+  | SInput of tType list * sType
+  | SOutput of tType list  * sType
+  | SBranch of (label * sType) list
+  | SChoice of (label * sType) list
+  | SMu of typeVar * sType
+and tType = 
+  | TTypeVar of typeVar
+  | SType of sType
+  | NChan of tType list
+  | TMu of typeVar * tType
 
-and sessTyp =
-  | End
-  | Send of typ * sessTyp
-  | Recv of typ * sessTyp
-  | Select of (typ * sessTyp) list
-  | Offer of (typ * sessTyp) list
+(* p. 198 *)
 
-type pattern =
-  | PatVar of string
-  | PatTup of pattern list
-  | Wildcard
+type name = string
+type process = 
+  | PEnd 
+  | Par of process * process
+  | Rep of process
+  | PInput of name * (name * tType) list * process
+  | POutput of name * name list * process
+  | New of name * tType * process
+  | PBranch of name * (label * process) list
+  | PChoice of name * label * process
 
-type expr =
-  (* sth that can be sent via channels *)
-  | Num of int
-  | Bool of bool
-  | Str of string
-  | Var of string
-  | ChanVar of chanVar
-
-and chanVar =
-  (* channel with polarity *)
-  | Plus of string
-  | Minus of string
-
-type pi =
-  (* process *)
-  | Nil
-  | Print of expr
-  | Compose of pi * pi (* P | Q *)
-  | Seq of pi * pi (* P.Q *)
-  | New of string * pi (* (new c) P *)
-  | Send of chanVar * expr (* c+/c-<x>. P *)
-  | Recv of chanVar * string (* c+/c-(x). P *)
-  | Select of chanVar * string
-  | Offer of chanVar * branch list
-
-and branch = Branch of string * pi
-
-(* the value of a var/chan in the globalMap *)
-type value =
-  | Ast of expr
-  | PiChan of
-      value Pipe.Reader.t
-      * value Pipe.Writer.t
-      * value Pipe.Reader.t
-      * value Pipe.Writer.t
-
-(* global map with deferred values *)
-type globalMapType = (int, value Deferred.t, Int.comparator_witness) Map.t
