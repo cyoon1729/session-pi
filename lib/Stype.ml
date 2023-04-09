@@ -72,7 +72,6 @@ let tTypeSub (n : Pi.tType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
 ;;
 
 (* p. 214 *)
-(* call as sTypeSubC [] [] t1 t2 *)
 let rec sTypeSubC
   (sSigma : (Pi.sType * Pi.sType) Set.Poly.t)
   (tSigma : (Pi.tType * Pi.tType) Set.Poly.t)
@@ -133,6 +132,7 @@ let rec sTypeSubC
          | Some s -> sTypeSubC sSigma tSigma s t)
      | _, _ -> false)
 
+(* p. 201 & p. 214 *)
 and tTypeSubC
   (sSigma : (Pi.sType * Pi.sType) Set.Poly.t)
   (tSigma : (Pi.tType * Pi.tType) Set.Poly.t)
@@ -140,6 +140,24 @@ and tTypeSubC
   (t2 : Pi.tType)
   : bool
   =
-  ignore (sSigma, tSigma, t1, t2);
-  true
+  match Set.Poly.mem tSigma (t1, t2) with
+  | true -> true (* AS-ASSUMP *)
+  | false ->
+    (match t1, t2 with
+     | SType s1, SType s2 ->
+       (* Here, the paper confuses regular types with session types;
+          in order to build the parser, need to add the `SType` wrapper;
+          so, we can remove it safely *)
+       sTypeSubC sSigma tSigma s1 s2
+     | NChan ts, NChan us ->
+       (* S-CHAN *)
+       List.for_all2_exn ts us ~f:(fun t u ->
+         tTypeSubC sSigma tSigma t u && tTypeSubC sSigma tSigma u t)
+     | TMu (x, t), u ->
+       (* AS-RECL *)
+       tTypeSubC sSigma (Set.Poly.add tSigma (t1, t2)) (tTypeSub t1 x t) u
+     | t, TMu (x, u) ->
+       (* AS-RECR *)
+       tTypeSubC sSigma (Set.Poly.add tSigma (t1, t2)) t (tTypeSub t2 x u)
+     | _, _ -> false)
 ;;
