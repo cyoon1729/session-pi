@@ -1,16 +1,17 @@
-
 (* p. 197 *)
 type label = string
 type typeVar = string
-type sType = 
+
+type sType =
   | STypeVar of typeVar
   | SEnd
   | SInput of tType list * sType
-  | SOutput of tType list  * sType
+  | SOutput of tType list * sType
   | SBranch of (label * sType) list
   | SChoice of (label * sType) list
   | SMu of typeVar * sType
-and tType = 
+
+and tType =
   | TTypeVar of typeVar
   | SType of sType
   | NChan of tType list
@@ -19,8 +20,9 @@ and tType =
 (* p. 198 *)
 
 type name = string
-type process = 
-  | PEnd 
+
+type process =
+  | PEnd
   | Par of process * process
   | Rep of process
   | PInput of name * (name * tType) list * process
@@ -28,4 +30,3 @@ type process =
   | New of name * tType * process
   | PBranch of name * (label * process) list
   | PChoice of name * label * process
-
