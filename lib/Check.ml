@@ -165,7 +165,39 @@ let rec check
     then y
     else raise (Failure "channel name not available or not used")
   | PChoice (namex, l, p) ->
-    ignore (namex, l, p);
-    raise (Failure "TODO")
+    let envx, lts, x' =
+      match
+        ( Map.Poly.find gamma (Name namex)
+        , Map.Poly.find gamma (Plus namex)
+        , Map.Poly.find gamma (Mins namex) )
+      with
+      | Some (SType (SChoice lts)), _, _ ->
+        (* TC-CHOOSE1 *)
+        Name namex, lts, x
+      | _, Some (SType (SChoice lts)), _ ->
+        (* TC-CHOOSE2 *)
+        Plus namex, lts, Set.Poly.remove x (Mins namex)
+      | _, _, Some (SType (SChoice lts)) ->
+        (* TC-CHOOSE2 *)
+        Mins namex, lts, Set.Poly.remove x (Plus namex)
+      | _ -> raise (Failure "branch operation on invalid name")
+    in
+    (* get type of label *)
+    let ltmap =
+      match Map.Poly.of_alist lts with
+      | `Ok ltmap -> ltmap
+      | `Duplicate_key _ -> raise (Failure "error: duplicate label")
+    in
+    let t =
+      match Map.Poly.find ltmap l with
+      | None -> raise (Failure "missing branch label")
+      | Some t -> t
+    in
+    (* update env and get y *)
+    let gamma' = Map.Poly.set gamma ~key:envx ~data:(SType t) in
+    let y = check gamma' x' p in
+    (* check that channel used completely *)
+    if Set.Poly.mem x envx && Set.Poly.mem y envx
+    then y
+    else raise (Failure "channel name not available or not used")
 ;;
-(* TODO *)
