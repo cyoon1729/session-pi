@@ -113,4 +113,10 @@ let rec eval
   | POutput (namex, ys, p) -> 
     ignore (namex, ys, p);
     raise (Failure "TODO") (* TODO *)
+  | PBranch (namex, ls) -> 
+    ignore (namex, ls);
+    raise (Failure "TODO") (* TODO *)
+  | PChoice (namex, l, p) -> 
+    ignore (namex, l, p);
+    raise (Failure "TODO") (* TODO *)
 ;;
