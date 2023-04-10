@@ -13,12 +13,39 @@ let rec check
   : envName Set.Poly.t
   =
   match ast with
+  | PEnd -> tcnil gamma x ast
+  | Par _ -> tcpar gamma x ast
+  | Rep _ -> tcrep gamma x ast
+  | New (_, NChan _, _) -> tcnew gamma x ast
+  | New (_, SType _, _) -> tcnews gamma x ast
+  | New _ -> raise (Failure "not a channel type")
+  | PInput _ -> tcin gamma x ast
+  | POutput _ -> tcout gamma x ast
+  | PBranch _ -> tcoffer gamma x ast
+  | PChoice _ -> tcchoose gamma x ast
+
+and  tcnil
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | PEnd ->
     (* TC-NIL *)
     Set.Poly.filter x ~f:(fun xp ->
       match Map.Poly.find gamma xp with
       | Some (SType SEnd) -> true
       | _ -> false)
+  | _ -> raise (Failure "incorrect function")
+
+and tcpar
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | Par (p, q) ->
     (* TC-PAR *)
     let y = check gamma x p in
@@ -26,13 +53,41 @@ let rec check
     let x' = Set.Poly.fold y ~init:x ~f:Set.Poly.remove in
     let z = check gamma' x' q in
     Set.Poly.union y z
+  | _ -> raise (Failure "incorrect function")
+
+and tcrep
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  ignore(x);
+  match ast with
   | Rep p ->
     (* TC-REP *)
     check gamma Set.Poly.empty p
+  | _ -> raise (Failure "incorrect function")
+
+and tcnew
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | New (namex, NChan ts, p) ->
     (* TC-NEW *)
     let gamma' = gamma |> Map.Poly.add_exn ~key:(Name namex) ~data:(Pi.NChan ts) in
     check gamma' x p
+  | _ -> raise (Failure "incorrect function")
+
+and tcnews
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | New (namex, SType s, p) ->
     (* TC-NEWS *)
     let gamma' =
@@ -53,6 +108,15 @@ let rec check
      | false, _, _ -> raise (Failure "channel not used completely")
      | _, false, _ -> raise (Failure "channel not used completely")
      | _, _, false -> raise (Failure "channol cannot have end type"))
+  | _ -> raise (Failure "incorrect function")
+
+and tcin
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | PInput (namex, ys, p) ->
     (* add new names to environment *)
     let gamma' =
@@ -113,9 +177,28 @@ let rec check
     if Set.Poly.is_subset ySess ~of_:y
     then Set.Poly.diff y ySess
     else raise (Failure "in-names not used completely")
+  | _ -> raise (Failure "incorrect function")
+
+and tcout
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | POutput (namex, ys, p) ->
+    ignore (gamma, x, ast);
     ignore (namex, ys, p);
     raise (Failure "TODO") (* TODO *)
+  | _ -> raise (Failure "incorrect function")
+
+and tcoffer
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | PBranch (namex, lps) ->
     let envx, lts, x' =
       match
@@ -164,6 +247,15 @@ let rec check
     if Set.Poly.mem x envx && Set.Poly.mem y envx
     then y
     else raise (Failure "channel name not available or not used")
+  | _ -> raise (Failure "incorrect function")
+
+and tcchoose
+  (gamma : (envName, Pi.tType) Map.Poly.t)
+  (x : envName Set.Poly.t)
+  (ast : Pi.process)
+  : envName Set.Poly.t
+  =
+  match ast with
   | PChoice (namex, l, p) ->
     let envx, lts, x' =
       match
@@ -200,4 +292,5 @@ let rec check
     if Set.Poly.mem x envx && Set.Poly.mem y envx
     then y
     else raise (Failure "channel name not available or not used")
+  | _ -> raise (Failure "incorrect function")
 ;;
