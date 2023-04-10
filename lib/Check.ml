@@ -54,11 +54,12 @@ let rec check
      | _, false, _ -> raise (Failure "channel not used completely")
      | _, _, false -> raise (Failure "channol cannot have end type"))
   | PInput (namex, ys, p) ->
-    (* multiplex on input rules *)
+    (* add new names to environment *)
     let gamma' =
       List.fold ys ~init:gamma ~f:(fun gamma (n, t) ->
         Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
     in
+    (* get the received session ys *)
     let ySess =
       ys
       |> List.filter_map ~f:(fun (n, t) ->
@@ -67,12 +68,14 @@ let rec check
            | _ -> None)
       |> Set.Poly.of_list
     in
+    (* add session ys to available session names *)
     let x' = Set.Poly.union x ySess in
     let subtype_vars ys ts : bool =
       ys
       |> List.map ~f:snd
       |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
     in
+    (* multiplex on input rules *)
     let y =
       match
         ( Map.Poly.find gamma (Name namex)
@@ -105,18 +108,64 @@ let rec check
         if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
         then y
         else raise (Failure "channel name not available or not used")
-      | _ -> raise (Failure "TODO")
+      | _ -> raise (Failure "input operation on invalid name")
     in
     if Set.Poly.is_subset ySess ~of_:y
     then Set.Poly.diff y ySess
     else raise (Failure "in-names not used completely")
-  | POutput (namex, ys, p) -> 
+  | POutput (namex, ys, p) ->
     ignore (namex, ys, p);
     raise (Failure "TODO") (* TODO *)
-  | PBranch (namex, ls) -> 
-    ignore (namex, ls);
-    raise (Failure "TODO") (* TODO *)
-  | PChoice (namex, l, p) -> 
+  | PBranch (namex, lps) ->
+    let envx, lts, x' =
+      match
+        ( Map.Poly.find gamma (Name namex)
+        , Map.Poly.find gamma (Plus namex)
+        , Map.Poly.find gamma (Mins namex) )
+      with
+      | Some (SType (SBranch lts)), _, _ ->
+        (* TC-OFFER1 *)
+        Name namex, lts, x
+      | _, Some (SType (SBranch lts)), _ ->
+        (* TC-OFFER2 *)
+        Plus namex, lts, Set.Poly.remove x (Mins namex)
+      | _, _, Some (SType (SBranch lts)) ->
+        (* TC-OFFER2 *)
+        Mins namex, lts, Set.Poly.remove x (Plus namex)
+      | _ -> raise (Failure "branch operation on invalid name")
+    in
+    (* get Ys = {Yi | gamma, envx : Ti |-x' pi : Yi} *)
+    let lpmap =
+      match Map.Poly.of_alist lps with
+      | `Ok lpmap -> lpmap
+      | `Duplicate_key _ -> raise (Failure "error: duplicate label")
+    in
+    let ys =
+      List.map lts ~f:(fun (l, t) ->
+        match Map.Poly.find lpmap l with
+        | None -> raise (Failure "missing branch label")
+        | Some p ->
+          let gamma' = Map.Poly.set gamma ~key:envx ~data:(SType t) in
+          check gamma' x' p)
+    in
+    (* get the unique Y where Ys = {Y} *)
+    let y_candidate =
+      match List.hd ys with
+      | Some y_candidate -> y_candidate
+      | None -> raise (Failure "parser should have prevented this")
+    in
+    let y =
+      List.fold ys ~init:y_candidate ~f:(fun y_candidate y ->
+        if Set.Poly.equal y y_candidate
+        then y_candidate
+        else raise (Failure "inconsistent branches"))
+    in
+    (* check that channel used completely *)
+    if Set.Poly.mem x envx && Set.Poly.mem y envx
+    then y
+    else raise (Failure "channel name not available or not used")
+  | PChoice (namex, l, p) ->
     ignore (namex, l, p);
-    raise (Failure "TODO") (* TODO *)
+    raise (Failure "TODO")
 ;;
+(* TODO *)
