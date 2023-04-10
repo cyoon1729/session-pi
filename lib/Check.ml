@@ -24,7 +24,7 @@ let rec check
   | PBranch _ -> tcoffer gamma x ast
   | PChoice _ -> tcchoose gamma x ast
 
-and  tcnil
+and tcnil
   (gamma : (envName, Pi.tType) Map.Poly.t)
   (x : envName Set.Poly.t)
   (ast : Pi.process)
@@ -61,7 +61,7 @@ and tcrep
   (ast : Pi.process)
   : envName Set.Poly.t
   =
-  ignore(x);
+  ignore x;
   match ast with
   | Rep p ->
     (* TC-REP *)
@@ -187,9 +187,73 @@ and tcout
   =
   match ast with
   | POutput (namex, ys, p) ->
-    ignore (gamma, x, ast);
-    ignore (namex, ys, p);
-    raise (Failure "TODO") (* TODO *)
+    let find_y_ys gamma x ts =
+      (* find the (polarized) names and types of the session-typed ys *)
+      let yqs =
+        List.zip_exn ys ts
+        |> List.filter_map ~f:(fun (y, t) ->
+             match
+               ( Map.Poly.find gamma (Name y)
+               , Map.Poly.find gamma (Plus y)
+               , Map.Poly.find gamma (Mins y) )
+             with
+             | Some (Pi.SType u), _, _
+               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+               Some (Name y, Pi.SType u)
+             | _, Some (Pi.SType u), _
+               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+               Some (Plus y, Pi.SType u)
+             | _, _, Some (Pi.SType u)
+               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+               Some (Mins y, Pi.SType u)
+             | None, None, None -> raise (Failure "name not in scope")
+             | _ -> None)
+      in
+      (* remove these session-typed ys from gamma *)
+      let gamma' =
+        List.fold yqs ~init:gamma ~f:(fun gamma (y, _) -> Map.Poly.remove gamma y)
+      in
+      (* get the session-typed ys, without associated types *)
+      let ySess = yqs |> List.map ~f:fst |> Set.Poly.of_list in
+      (* remove session ys from available session names *)
+      let x' = Set.Poly.diff x ySess in
+      if Set.Poly.is_subset ySess ~of_:x
+      then (check gamma' x' p, ySess)
+      else raise (Failure "name not in scope")
+    in
+      (match
+        ( Map.Poly.find gamma (Name namex)
+        , Map.Poly.find gamma (Plus namex)
+        , Map.Poly.find gamma (Mins namex) )
+      with
+      | Some (NChan ts), _, _ ->
+        (* TC-OUT *)
+        let y, ySess = find_y_ys gamma x ts in
+        Set.Poly.union y ySess
+      | Some (SType (SOutput (ts, s))), _, _ ->
+        (* TC-OUTS1 *)
+        let gamma' = Map.Poly.set gamma ~key:(Name namex) ~data:(SType s) in
+        let y, ySess = find_y_ys gamma' x ts in
+        if Set.Poly.mem x (Name namex) && Set.Poly.mem y (Name namex)
+        then Set.Poly.union y ySess
+        else raise (Failure "channel name not available or not used")
+      | _, Some (SType (SOutput (ts, s))), _ ->
+        (* TC-OUTS2 *)
+	    let gamma' = Map.Poly.set gamma ~key:(Plus namex) ~data:(SType s) in
+        let x' = Set.Poly.remove x (Mins namex) in
+        let y, ySess = find_y_ys gamma' x' ts in
+        if Set.Poly.mem x (Plus namex) && Set.Poly.mem y (Plus namex)
+        then Set.Poly.union y ySess
+        else raise (Failure "channel name not available or not used")
+      | _, _, Some (SType (SOutput (ts, s))) ->
+        (* TC-OUTS3 *)
+        let gamma' = Map.Poly.set gamma ~key:(Mins namex) ~data:(SType s) in
+        let x' = Set.Poly.remove x (Plus namex) in
+        let y, ySess = find_y_ys gamma' x' ts in
+        if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
+        then Set.Poly.union y ySess
+        else raise (Failure "channel name not available or not used")
+      | _ -> raise (Failure "input operation on invalid name"))
   | _ -> raise (Failure "incorrect function")
 
 and tcoffer
