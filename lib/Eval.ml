@@ -55,6 +55,10 @@ let rec eval
      | _, _, false -> raise (Failure "channol cannot have end type"))
   | PInput (tvx, ys, p) ->
     (* multiplex on input rules *)
+    let gamma' =
+      List.fold ys ~init:gamma ~f:(fun gamma (n, t) ->
+        Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
+    in
     let ySess =
       ys
       |> List.filter_map ~f:(fun (n, t) ->
@@ -64,37 +68,44 @@ let rec eval
       |> Set.Poly.of_list
     in
     let x' = Set.Poly.union x ySess in
+    let subtype_vars ys ts =
+      ys
+      |> List.map ~f:snd
+      |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
+    in
     let y =
-      match Map.Poly.find gamma (Name tvx) with
-      | Some (NChan ts)
-        when ys
-             |> List.map ~f:snd
-             |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts ->
+      match
+        ( Map.Poly.find gamma (Name tvx)
+        , Map.Poly.find gamma (Plus tvx)
+        , Map.Poly.find gamma (Mins tvx) )
+      with
+      | Some (NChan ts), _, _ when subtype_vars ys ts ->
         (* TC-IN *)
-        let gamma' =
-          List.fold ys ~init:gamma ~f:(fun gamma (n, t) ->
-            Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
-        in
         eval gamma' x' p
-      | Some (SType (SInput (ts, s)))
-        when ys
-             |> List.map ~f:snd
-             |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts ->
+      | Some (SType (SInput (ts, s))), _, _ when subtype_vars ys ts ->
         (* TC-INS1 *)
-        let gamma'' = Map.Poly.set gamma ~key:(Name tvx) ~data:(SType s) in
-        let gamma' =
-          List.fold ys ~init:gamma'' ~f:(fun gamma (n, t) ->
-            Map.Poly.add_exn gamma ~key:(Name n) ~data:t)
-        in
-        let y = eval gamma' x' p in
+        let gamma'' = Map.Poly.set gamma' ~key:(Name tvx) ~data:(SType s) in
+        let y = eval gamma'' x' p in
         if Set.Poly.mem x (Name tvx) && Set.Poly.mem y (Name tvx)
         then y
         else raise (Failure "channel name not available or not used")
-      | Some _ -> raise (Failure "invalid channel type")
-      | None ->
-        (* TC-INS2/3 *)
-        raise (Failure "TODO")
-      (*TODO*)
+      | _, Some (SType (SInput (ts, s))), _ when subtype_vars ys ts ->
+        (* TC-INS2 *)
+        let gamma'' = Map.Poly.set gamma' ~key:(Plus tvx) ~data:(SType s) in
+        let x'' = Set.Poly.remove x (Mins tvx) in
+        let y = eval gamma'' x'' p in
+        if Set.Poly.mem x (Plus tvx) && Set.Poly.mem y (Plus tvx)
+        then y
+        else raise (Failure "channel name not available or not used")
+      | _, _, Some (SType (SInput (ts, s))) when subtype_vars ys ts ->
+        (* TC-INS3 *)
+        let gamma'' = Map.Poly.set gamma' ~key:(Mins tvx) ~data:(SType s) in
+        let x'' = Set.Poly.remove x (Plus tvx) in
+        let y = eval gamma'' x'' p in
+        if Set.Poly.mem x (Mins tvx) && Set.Poly.mem y (Mins tvx)
+        then y
+        else raise (Failure "channel name not available or not used")
+      | _ -> raise (Failure "TODO")
     in
     if Set.Poly.is_subset ySess ~of_:y
     then Set.Poly.diff y ySess
