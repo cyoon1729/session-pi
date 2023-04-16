@@ -1,3 +1,12 @@
+(*
+ * TODO:
+ *  - Evaluate each rduction rule
+ *  - Define termination conditions
+ *  - Implement substitutions and the congruence rules: when to use/apply congruence rules?
+ *  - Evalution one step of the reduction of the whole context
+ *  - Evaluate whole program until termination
+ *)
+
 open Base
 open Core
 
@@ -68,7 +77,7 @@ let reducePeers (peerList: (Pi.process list) list) : (Pi.process list) =
   in reducePeers' peerList []
 
 (* Reduces !`isCommunicating` processes. The name is a misnomer, though, since
- * we don't actually fully reduce via the operational semantics.
+ * we don't actually fully reduce via the reduction rules.
  * e.g. for Par(p, q), we just unwrap the two parallel processes for them to
  *      be evaluated in the next round.
  *)
