@@ -37,4 +37,3 @@ type process =
   | New of name * tType * process
   | PBranch of name * (label * process) list
   | PChoice of name * label * process
-
