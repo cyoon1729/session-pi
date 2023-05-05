@@ -23,9 +23,9 @@ rule tokenize = parse
 | ","    { COMMA }
 | ":"    { COLON }
 | "^"    { HAT }
-| "`"    { TICK }
+| "'"    { TICK }
 | "m"    { MU }
-| "ν"    { NU }
+| "v"    { NU }
 | "zero" { ZERO }
 | "end"  { END }
 | ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { NAME (id) }
