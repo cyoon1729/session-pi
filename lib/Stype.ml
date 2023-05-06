@@ -207,3 +207,53 @@ and tTypeClosed
   | NChan ts -> ts |> List.map ~f:(tTypeClosed ~tTvs ~sTvs) |> List.reduce_exn ~f:( && )
   | TMu (tv, t') -> tTypeClosed t' ~tTvs:(Set.Poly.add tTvs tv) ~sTvs
 ;;
+
+(* check if session type is left-recursive e.g. m S. m T. S *)
+let rec sTypeLeftRec (s : Pi.sType) ~(tvs : Pi.typeVar Set.Poly.t) : bool =
+  match s with
+  | STypeVar tv -> Set.Poly.mem tvs tv
+  | SEnd -> false
+  | SInput (ts, s') ->
+    sTypeLeftRec s' ~tvs:Set.Poly.empty
+    || ts |> List.map ~f:(tTypeLeftRec ~tvs:Set.Poly.empty) |> List.reduce_exn ~f:( || )
+  | SOutput (ts, s') ->
+    sTypeLeftRec s' ~tvs:Set.Poly.empty
+    || ts |> List.map ~f:(tTypeLeftRec ~tvs:Set.Poly.empty) |> List.reduce_exn ~f:( || )
+  | SBranch lts ->
+    lts
+    |> List.map ~f:snd
+    |> List.map ~f:(sTypeLeftRec ~tvs:Set.Poly.empty)
+    |> List.reduce_exn ~f:( || )
+  | SChoice lts ->
+    lts
+    |> List.map ~f:snd
+    |> List.map ~f:(sTypeLeftRec ~tvs:Set.Poly.empty)
+    |> List.reduce_exn ~f:( || )
+  | SMu (tv, s') -> sTypeLeftRec s' ~tvs:(Set.Poly.add tvs tv)
+
+(* check if regular type is left-recursive e.g. m S. m T. S *)
+and tTypeLeftRec (t : Pi.tType) ~(tvs : Pi.typeVar Set.Poly.t) : bool =
+  match t with
+  | Int -> false
+  | TTypeVar tv -> Set.Poly.mem tvs tv
+  | SType s -> sTypeLeftRec s ~tvs:Set.Poly.empty
+  | NChan ts ->
+    ts |> List.map ~f:(tTypeLeftRec ~tvs:Set.Poly.empty) |> List.reduce_exn ~f:( || )
+  | TMu (tv, t') -> tTypeLeftRec t' ~tvs:(Set.Poly.add tvs tv)
+;;
+
+(* check if a type is a regular channel *)
+let rec isRegChan (t : Pi.tType) : bool =
+  match t with
+  | TMu (_, t') -> isRegChan t'
+  | NChan _ -> true
+  | _ -> false
+;;
+
+(* check if a type is a session channel *)
+let rec isSesChan (t : Pi.tType) : bool =
+  match t with
+  | TMu (_, t') -> isSesChan t'
+  | SType _ -> true
+  | _ -> false
+;;

@@ -16,9 +16,11 @@ let rec check
   | PEnd -> tcnil gamma x ast
   | Par _ -> tcpar gamma x ast
   | Rep _ -> tcrep gamma x ast
-  | New (_, NChan _, _) -> tcnew gamma x ast
-  | New (_, SType _, _) -> tcnews gamma x ast
-  | New _ -> raise (Failure "not a channel type") (*TODO*)
+  | New (_, t, _) when Stype.tTypeLeftRec t ~tvs:Set.Poly.empty ->
+    raise (Failure "recursive type")
+  | New (_, NChan _, _) -> tcnew gamma x ast (* TODO *)
+  | New (_, SType _, _) -> tcnews gamma x ast (* TODO *)
+  | New _ -> raise (Failure "not a channel type")
   | PInput _ -> tcin gamma x ast
   | POutput _ -> tcout gamma x ast
   | PBranch _ -> tcoffer gamma x ast

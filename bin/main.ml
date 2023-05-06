@@ -32,7 +32,9 @@ let check_test_fail test =
 let () =
   printf "\n";
   Sys_unix.ls_dir dir_path_pass
+  |> List.sort ~compare:String.compare
   |> List.iter ~f:(fun test -> check_test_pass (dir_path_pass ^ test));
   Sys_unix.ls_dir dir_path_fail
+  |> List.sort ~compare:String.compare
   |> List.iter ~f:(fun test -> check_test_fail (dir_path_fail ^ test))
 ;;
