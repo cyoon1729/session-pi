@@ -164,3 +164,46 @@ and tTypeSubC
        tTypeSubC sSigma (Set.Poly.add tSigma (t1, t2)) t (tTypeSub t2 x u)
      | _, _ -> false)
 ;;
+
+(* Check if session type is closed *)
+let rec sTypeClosed
+  (s : Pi.sType)
+  ~(tTvs : Pi.typeVar Set.Poly.t)
+  ~(sTvs : Pi.typeVar Set.Poly.t)
+  : bool
+  =
+  match s with
+  | STypeVar tv -> Set.Poly.mem sTvs tv
+  | SEnd -> true
+  | SInput (ts, s') ->
+    sTypeClosed s' ~tTvs ~sTvs
+    && ts |> List.map ~f:(tTypeClosed ~tTvs ~sTvs) |> List.reduce_exn ~f:( && )
+  | SOutput (ts, s') ->
+    sTypeClosed s' ~tTvs ~sTvs
+    && ts |> List.map ~f:(tTypeClosed ~tTvs ~sTvs) |> List.reduce_exn ~f:( && )
+  | SBranch lts ->
+    lts
+    |> List.map ~f:snd
+    |> List.map ~f:(sTypeClosed ~tTvs ~sTvs)
+    |> List.reduce_exn ~f:( && )
+  | SChoice lts ->
+    lts
+    |> List.map ~f:snd
+    |> List.map ~f:(sTypeClosed ~tTvs ~sTvs)
+    |> List.reduce_exn ~f:( && )
+  | SMu (tv, s') -> sTypeClosed s' ~tTvs ~sTvs:(Set.Poly.add sTvs tv)
+
+(* Check if regular type is closed *)
+and tTypeClosed
+  (t : Pi.tType)
+  ~(tTvs : Pi.typeVar Set.Poly.t)
+  ~(sTvs : Pi.typeVar Set.Poly.t)
+  : bool
+  =
+  match t with
+  | Int -> true
+  | TTypeVar tv -> Set.Poly.mem tTvs tv
+  | SType s -> sTypeClosed s ~tTvs ~sTvs
+  | NChan ts -> ts |> List.map ~f:(tTypeClosed ~tTvs ~sTvs) |> List.reduce_exn ~f:( && )
+  | TMu (tv, t') -> tTypeClosed t' ~tTvs:(Set.Poly.add tTvs tv) ~sTvs
+;;

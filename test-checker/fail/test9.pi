@@ -1,0 +1,4 @@
+(v x : ^['[?{'[end]}.end]]) 
+    ((v y : '[?{'[end]}.end]) (v z : '[end]) zero 
+     | 
+     zero)

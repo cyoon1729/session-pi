@@ -18,7 +18,7 @@ let rec check
   | Rep _ -> tcrep gamma x ast
   | New (_, NChan _, _) -> tcnew gamma x ast
   | New (_, SType _, _) -> tcnews gamma x ast
-  | New _ -> raise (Failure "not a channel type")
+  | New _ -> raise (Failure "not a channel type") (*TODO*)
   | PInput _ -> tcin gamma x ast
   | POutput _ -> tcout gamma x ast
   | PBranch _ -> tcoffer gamma x ast
@@ -75,10 +75,13 @@ and tcnew
   : envName Set.Poly.t
   =
   match ast with
-  | New (namex, NChan ts, p) ->
-    (* TC-NEW *)
-    let gamma' = gamma |> Map.Poly.add_exn ~key:(Name namex) ~data:(Pi.NChan ts) in
-    check gamma' x p
+  | New (namex, (NChan ts as t), p) ->
+    if not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty
+    then raise (Failure "type not closed")
+    else (
+      (* TC-NEW *)
+      let gamma' = gamma |> Map.Poly.add_exn ~key:(Name namex) ~data:(Pi.NChan ts) in
+      check gamma' x p)
   | _ -> raise (Failure "incorrect function")
 
 and tcnews
@@ -88,26 +91,29 @@ and tcnews
   : envName Set.Poly.t
   =
   match ast with
-  | New (namex, SType s, p) ->
-    (* TC-NEWS *)
-    let gamma' =
-      gamma
-      |> Map.Poly.add_exn ~key:(Plus namex) ~data:(Pi.SType s)
-      |> Map.Poly.add_exn ~key:(Mins namex) ~data:(Pi.SType (Stype.dual s))
-    in
-    let x' = Set.Poly.add (Set.Poly.add x (Plus namex)) (Mins namex) in
-    let y = check gamma' x' p in
-    let xplus = Set.Poly.mem y (Plus namex) in
-    let xmins = Set.Poly.mem y (Mins namex) in
-    let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
-    (match xplus, xmins, ended with
-     | true, true, true ->
-       let y' = Set.Poly.remove y (Plus namex) in
-       let y'' = Set.Poly.remove y' (Mins namex) in
-       y''
-     | false, _, _ -> raise (Failure "channel not used completely")
-     | _, false, _ -> raise (Failure "channel not used completely")
-     | _, _, false -> raise (Failure "channol cannot have end type"))
+  | New (namex, (SType s as t), p) ->
+    if not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty
+    then raise (Failure "type not closed")
+    else (
+      (* TC-NEWS *)
+      let gamma' =
+        gamma
+        |> Map.Poly.add_exn ~key:(Plus namex) ~data:(Pi.SType s)
+        |> Map.Poly.add_exn ~key:(Mins namex) ~data:(Pi.SType (Stype.dual s))
+      in
+      let x' = Set.Poly.add (Set.Poly.add x (Plus namex)) (Mins namex) in
+      let y = check gamma' x' p in
+      let xplus = Set.Poly.mem y (Plus namex) in
+      let xmins = Set.Poly.mem y (Mins namex) in
+      let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
+      match xplus, xmins, ended with
+      | true, true, true ->
+        let y' = Set.Poly.remove y (Plus namex) in
+        let y'' = Set.Poly.remove y' (Mins namex) in
+        y''
+      | false, _, _ -> raise (Failure "channel not used completely")
+      | _, false, _ -> raise (Failure "channel not used completely")
+      | _, _, false -> raise (Failure "channol cannot have end type"))
   | _ -> raise (Failure "incorrect function")
 
 and tcin
@@ -218,42 +224,42 @@ and tcout
       (* remove session ys from available session names *)
       let x' = Set.Poly.diff x ySess in
       if Set.Poly.is_subset ySess ~of_:x
-      then (check gamma' x' p, ySess)
+      then check gamma' x' p, ySess
       else raise (Failure "name not in scope")
     in
-      (match
-        ( Map.Poly.find gamma (Name namex)
-        , Map.Poly.find gamma (Plus namex)
-        , Map.Poly.find gamma (Mins namex) )
-      with
-      | Some (NChan ts), _, _ ->
-        (* TC-OUT *)
-        let y, ySess = find_y_ys gamma x ts in
-        Set.Poly.union y ySess
-      | Some (SType (SOutput (ts, s))), _, _ ->
-        (* TC-OUTS1 *)
-        let gamma' = Map.Poly.set gamma ~key:(Name namex) ~data:(SType s) in
-        let y, ySess = find_y_ys gamma' x ts in
-        if Set.Poly.mem x (Name namex) && Set.Poly.mem y (Name namex)
-        then Set.Poly.union y ySess
-        else raise (Failure "channel name not available or not used")
-      | _, Some (SType (SOutput (ts, s))), _ ->
-        (* TC-OUTS2 *)
-	    let gamma' = Map.Poly.set gamma ~key:(Plus namex) ~data:(SType s) in
-        let x' = Set.Poly.remove x (Mins namex) in
-        let y, ySess = find_y_ys gamma' x' ts in
-        if Set.Poly.mem x (Plus namex) && Set.Poly.mem y (Plus namex)
-        then Set.Poly.union y ySess
-        else raise (Failure "channel name not available or not used")
-      | _, _, Some (SType (SOutput (ts, s))) ->
-        (* TC-OUTS3 *)
-        let gamma' = Map.Poly.set gamma ~key:(Mins namex) ~data:(SType s) in
-        let x' = Set.Poly.remove x (Plus namex) in
-        let y, ySess = find_y_ys gamma' x' ts in
-        if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
-        then Set.Poly.union y ySess
-        else raise (Failure "channel name not available or not used")
-      | _ -> raise (Failure "input operation on invalid name"))
+    (match
+       ( Map.Poly.find gamma (Name namex)
+       , Map.Poly.find gamma (Plus namex)
+       , Map.Poly.find gamma (Mins namex) )
+     with
+     | Some (NChan ts), _, _ ->
+       (* TC-OUT *)
+       let y, ySess = find_y_ys gamma x ts in
+       Set.Poly.union y ySess
+     | Some (SType (SOutput (ts, s))), _, _ ->
+       (* TC-OUTS1 *)
+       let gamma' = Map.Poly.set gamma ~key:(Name namex) ~data:(SType s) in
+       let y, ySess = find_y_ys gamma' x ts in
+       if Set.Poly.mem x (Name namex) && Set.Poly.mem y (Name namex)
+       then Set.Poly.union y ySess
+       else raise (Failure "channel name not available or not used")
+     | _, Some (SType (SOutput (ts, s))), _ ->
+       (* TC-OUTS2 *)
+       let gamma' = Map.Poly.set gamma ~key:(Plus namex) ~data:(SType s) in
+       let x' = Set.Poly.remove x (Mins namex) in
+       let y, ySess = find_y_ys gamma' x' ts in
+       if Set.Poly.mem x (Plus namex) && Set.Poly.mem y (Plus namex)
+       then Set.Poly.union y ySess
+       else raise (Failure "channel name not available or not used")
+     | _, _, Some (SType (SOutput (ts, s))) ->
+       (* TC-OUTS3 *)
+       let gamma' = Map.Poly.set gamma ~key:(Mins namex) ~data:(SType s) in
+       let x' = Set.Poly.remove x (Plus namex) in
+       let y, ySess = find_y_ys gamma' x' ts in
+       if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
+       then Set.Poly.union y ySess
+       else raise (Failure "channel name not available or not used")
+     | _ -> raise (Failure "input operation on invalid name"))
   | _ -> raise (Failure "incorrect function")
 
 and tcoffer
