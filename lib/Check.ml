@@ -18,9 +18,14 @@ let rec check
   | Rep _ -> tcrep gamma x ast
   | New (_, t, _) when Stype.tTypeLeftRec t ~tvs:Set.Poly.empty ->
     raise (Failure "recursive type")
-  | New (_, NChan _, _) -> tcnew gamma x ast (* TODO *)
-  | New (_, SType _, _) -> tcnews gamma x ast (* TODO *)
-  | New _ -> raise (Failure "not a channel type")
+  | New (_, t, _)
+    when not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty ->
+    raise (Failure "type not closed")
+  | New (c, t, p) ->
+    (match Stype.stepLeftRec t with
+     | NChan _ as t' -> tcnew gamma x @@ Pi.New (c, t', p)
+     | SType _ as t' -> tcnews gamma x @@ Pi.New (c, t', p)
+     | _ -> raise (Failure "not a channel type"))
   | PInput _ -> tcin gamma x ast
   | POutput _ -> tcout gamma x ast
   | PBranch _ -> tcoffer gamma x ast
@@ -77,13 +82,10 @@ and tcnew
   : envName Set.Poly.t
   =
   match ast with
-  | New (namex, (NChan ts as t), p) ->
-    if not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty
-    then raise (Failure "type not closed")
-    else (
-      (* TC-NEW *)
-      let gamma' = gamma |> Map.Poly.add_exn ~key:(Name namex) ~data:(Pi.NChan ts) in
-      check gamma' x p)
+  | New (namex, NChan ts, p) ->
+    (* TC-NEW *)
+    let gamma' = gamma |> Map.Poly.add_exn ~key:(Name namex) ~data:(Pi.NChan ts) in
+    check gamma' x p
   | _ -> raise (Failure "incorrect function")
 
 and tcnews
@@ -93,29 +95,26 @@ and tcnews
   : envName Set.Poly.t
   =
   match ast with
-  | New (namex, (SType s as t), p) ->
-    if not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty
-    then raise (Failure "type not closed")
-    else (
-      (* TC-NEWS *)
-      let gamma' =
-        gamma
-        |> Map.Poly.add_exn ~key:(Plus namex) ~data:(Pi.SType s)
-        |> Map.Poly.add_exn ~key:(Mins namex) ~data:(Pi.SType (Stype.dual s))
-      in
-      let x' = Set.Poly.add (Set.Poly.add x (Plus namex)) (Mins namex) in
-      let y = check gamma' x' p in
-      let xplus = Set.Poly.mem y (Plus namex) in
-      let xmins = Set.Poly.mem y (Mins namex) in
-      let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
-      match xplus, xmins, ended with
-      | true, true, true ->
-        let y' = Set.Poly.remove y (Plus namex) in
-        let y'' = Set.Poly.remove y' (Mins namex) in
-        y''
-      | false, _, _ -> raise (Failure "channel not used completely")
-      | _, false, _ -> raise (Failure "channel not used completely")
-      | _, _, false -> raise (Failure "channol cannot have end type"))
+  | New (namex, SType s, p) ->
+    (* TC-NEWS *)
+    let gamma' =
+      gamma
+      |> Map.Poly.add_exn ~key:(Plus namex) ~data:(Pi.SType s)
+      |> Map.Poly.add_exn ~key:(Mins namex) ~data:(Pi.SType (Stype.dual s))
+    in
+    let x' = Set.Poly.add (Set.Poly.add x (Plus namex)) (Mins namex) in
+    let y = check gamma' x' p in
+    let xplus = Set.Poly.mem y (Plus namex) in
+    let xmins = Set.Poly.mem y (Mins namex) in
+    let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
+    (match xplus, xmins, ended with
+     | true, true, true ->
+       let y' = Set.Poly.remove y (Plus namex) in
+       let y'' = Set.Poly.remove y' (Mins namex) in
+       y''
+     | false, _, _ -> raise (Failure "channel not used completely")
+     | _, false, _ -> raise (Failure "channel not used completely")
+     | _, _, false -> raise (Failure "channel cannot have end type"))
   | _ -> raise (Failure "incorrect function")
 
 and tcin

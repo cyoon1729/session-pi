@@ -242,18 +242,9 @@ and tTypeLeftRec (t : Pi.tType) ~(tvs : Pi.typeVar Set.Poly.t) : bool =
   | TMu (tv, t') -> tTypeLeftRec t' ~tvs:(Set.Poly.add tvs tv)
 ;;
 
-(* check if a type is a regular channel *)
-let rec isRegChan (t : Pi.tType) : bool =
+(* step type until some stub is reached *)
+let rec stepLeftRec (t : Pi.tType) : Pi.tType =
   match t with
-  | TMu (_, t') -> isRegChan t'
-  | NChan _ -> true
-  | _ -> false
-;;
-
-(* check if a type is a session channel *)
-let rec isSesChan (t : Pi.tType) : bool =
-  match t with
-  | TMu (_, t') -> isSesChan t'
-  | SType _ -> true
-  | _ -> false
+  | TMu (tv, t') -> stepLeftRec @@ tTypeSub t tv t'
+  | x -> x
 ;;

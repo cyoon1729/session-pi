@@ -4,7 +4,7 @@
      y![x].
      zero 
      | 
-     x?[y : '[!{'[end]}.end]].
+     x?[y : '[?{m T.^['[?{T}.end]]}.end]].
      y?[z : m T.^['[?{T}.end]]].
      zero)
 
