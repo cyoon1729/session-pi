@@ -1,0 +1,24 @@
+(v x : m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]])
+    (!(x?[y : '[&<'a : !{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end, 
+                  'b : !{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]], 
+                         m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end>]].
+       y |> {'a : y![x].zero,
+             'b : y![x, x].zero})
+     |
+     (v y : '[+<'a : ?{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end, 
+                'b : ?{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]], 
+                       m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end>])
+	 x![y].
+     y <| 'a.
+     y?[z : m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]].
+     zero
+     |
+     (v y : '[+<'a : ?{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end, 
+                'b : ?{m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]], 
+                       m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]}.end>])
+	 x![y].
+     y <| 'b.
+     y?[z : m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]],
+        w : m T.^['[&<'a : !{T}.end, 'b : !{T, T}.end>]]].
+     zero
+    )
