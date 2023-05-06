@@ -348,7 +348,7 @@ and tcchoose
       | _, _, Some (SType (SChoice lts)) ->
         (* TC-CHOOSE2 *)
         Mins namex, lts, Set.Poly.remove x (Plus namex)
-      | _ -> raise (Failure "branch operation on invalid name")
+      | _ -> raise (Failure "choice operation on invalid name")
     in
     (* get type of label *)
     let ltmap =
