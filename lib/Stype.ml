@@ -1,6 +1,23 @@
 open Base
 open Core
 
+let rec sTypeToString (s : Pi.sType) : string =
+  match s with
+  | STypeVar x -> x
+  | SEnd -> "end"
+  | SInput (_, s') -> "?{...}." ^ sTypeToString s'
+  | SOutput (_, s') -> "!{...}." ^ sTypeToString s'
+  | SBranch labs ->
+    labs
+    |> List.map ~f:(fun (l, s') -> "(" ^ l ^ ": " ^ sTypeToString s' ^ ")")
+    |> List.reduce_exn ~f:( ^ )
+  | SChoice labs ->
+    labs
+    |> List.map ~f:(fun (l, s') -> "(" ^ l ^ ": " ^ sTypeToString s' ^ ")")
+    |> List.reduce_exn ~f:( ^ )
+  | SMu (tv, s') -> "m " ^ tv ^ "." ^ sTypeToString s'
+;;
+
 (* p. 198 *)
 let rec dual (s : Pi.sType) : Pi.sType =
   match s with
@@ -94,10 +111,18 @@ let rec sTypeSubC
        sTypeSubC (Set.Poly.add sSigma (s1, s2)) tSigma t (sTypeSub s2 x u)
      | SInput (ts, v), SInput (us, w) ->
        (* AS-INS *)
-       sTypeSubC sSigma tSigma v w && List.for_all2_exn ts us ~f:(tTypeSubC sSigma tSigma)
+       if List.length ts <> List.length us
+       then raise (Failure "incompatible input list lengths")
+       else
+         sTypeSubC sSigma tSigma v w
+         && List.for_all2_exn ts us ~f:(tTypeSubC sSigma tSigma)
      | SOutput (ts, v), SOutput (us, w) ->
        (* AS-OUTS *)
-       sTypeSubC sSigma tSigma v w && List.for_all2_exn us ts ~f:(tTypeSubC sSigma tSigma)
+       if List.length ts <> List.length us
+       then raise (Failure "incompatible output list lengths")
+       else
+         sTypeSubC sSigma tSigma v w
+         && List.for_all2_exn us ts ~f:(tTypeSubC sSigma tSigma)
      | SBranch labs1, SBranch labs2 ->
        (* AS-BRANCH *)
        let smap1 =
@@ -154,8 +179,11 @@ and tTypeSubC
        sTypeSubC sSigma tSigma s1 s2
      | NChan ts, NChan us ->
        (* S-CHAN *)
-       List.for_all2_exn ts us ~f:(fun t u ->
-         tTypeSubC sSigma tSigma t u && tTypeSubC sSigma tSigma u t)
+       if List.length ts <> List.length us
+       then raise (Failure "incompatible type list lengths")
+       else
+         List.for_all2_exn ts us ~f:(fun t u ->
+           tTypeSubC sSigma tSigma t u && tTypeSubC sSigma tSigma u t)
      | TMu (x, t), u ->
        (* AS-RECL *)
        tTypeSubC sSigma (Set.Poly.add tSigma (t1, t2)) (tTypeSub t1 x t) u

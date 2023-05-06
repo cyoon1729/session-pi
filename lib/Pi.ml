@@ -1,6 +1,6 @@
 (* p. 197 *)
-type label = string
-type typeVar = string
+type label = string [@@deriving sexp]
+type typeVar = string [@@deriving sexp]
 
 type sType =
   | STypeVar of typeVar
@@ -10,6 +10,7 @@ type sType =
   | SBranch of (label * sType) list
   | SChoice of (label * sType) list
   | SMu of typeVar * sType
+[@@deriving sexp]
 
 and tType =
   | Int
@@ -17,7 +18,7 @@ and tType =
   | SType of sType
   | NChan of tType list
   | TMu of typeVar * tType
-
+[@@deriving sexp]
 (* p. 198 *)
 
 type name = string

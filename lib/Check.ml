@@ -108,13 +108,15 @@ and tcnews
     let xmins = Set.Poly.mem y (Mins namex) in
     let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
     (match xplus, xmins, ended with
-     | true, true, true ->
+     | true, true, false ->
        let y' = Set.Poly.remove y (Plus namex) in
        let y'' = Set.Poly.remove y' (Mins namex) in
        y''
      | false, _, _ -> raise (Failure "channel not used completely")
      | _, false, _ -> raise (Failure "channel not used completely")
-     | _, _, false -> raise (Failure "channel cannot have end type"))
+     | _, _, true ->
+       (*print_endline @@ Stype.sTypeToString s;*)
+       raise (Failure "channel cannot have end type"))
   | _ -> raise (Failure "incorrect function")
 
 and tcin
@@ -142,6 +144,9 @@ and tcin
     (* add session ys to available session names *)
     let x' = Set.Poly.union x ySess in
     let subtype_vars ys ts : bool =
+	  if List.length ys <> List.length ts 
+      then raise (Failure "incompatible input list lengths")
+	  else 
       ys
       |> List.map ~f:snd
       |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
