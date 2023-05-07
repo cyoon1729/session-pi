@@ -1,0 +1,3 @@
+(v c : ^['[?{int}.end]])
+(v x : '[?{int}.end]) 
+!(c![x].x![2].zero)

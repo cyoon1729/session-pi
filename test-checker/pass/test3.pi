@@ -1,1 +1,1 @@
-(!zero | !zero)
+(v c : ^[int]) c![2].zero

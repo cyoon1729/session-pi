@@ -13,6 +13,7 @@ type sType =
 
 and tType =
   | Int
+  | Bool
   | TTypeVar of typeVar
   | SType of sType
   | NChan of tType list
@@ -23,6 +24,7 @@ type name = string
 
 type data =
   | DataInt of int
+  | DataBool of bool
   | DataVar of name
 
 type process =

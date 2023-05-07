@@ -29,6 +29,9 @@ rule tokenize = parse
 | "zero" { ZERO }
 | "end"  { END }
 | "int"  { INTTYPE }
+| "bool" { BOOLTYPE }
+| "true" { TRUE }
+| "false"{ FALSE }
 | ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { NAME (id) }
 | ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { TYPEVAR (id) }
 | ['\''] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { LABEL (id) }

@@ -224,6 +224,11 @@ end = struct
                  (* otherwise, not a session type, only check for subtyping *)
                  if Stype.tTypeSubC Pi.Int t
                  then None
+                 else raise (Failure "incompatible output type")
+               | Pi.DataBool _ ->
+                 (* otherwise, not a session type, only check for subtyping *)
+                 if Stype.tTypeSubC Pi.Bool t
+                 then None
                  else raise (Failure "incompatible output type"))
         in
         (* remove these session-typed ys from gamma *)

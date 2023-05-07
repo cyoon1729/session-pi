@@ -59,6 +59,7 @@ end = struct
     and tSub (n : Pi.sType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
       match t with
       | Int -> Int
+      | Bool -> Bool
       | TTypeVar y ->
         if String.equal y x then raise (Failure "error: invalid type") else TTypeVar y
       | SType s -> SType (sSub n x s)
@@ -77,6 +78,7 @@ end = struct
     let rec tSub (n : Pi.tType) (x : Pi.typeVar) (t : Pi.tType) : Pi.tType =
       match t with
       | Int -> Int
+      | Bool -> Bool
       | TTypeVar y -> if String.equal y x then n else TTypeVar y
       | SType s -> SType (sSub n x s)
       | NChan ts -> NChan (List.map ~f:(tSub n x) ts)
@@ -183,6 +185,7 @@ end = struct
     | false ->
       (match t1, t2 with
        | Int, Int -> true
+       | Bool, Bool -> true
        | SType s1, SType s2 ->
          (* Here, the paper confuses regular types with session types;
           in order to build the parser, need to add the `SType` wrapper;
@@ -249,6 +252,7 @@ end = struct
     =
     match t with
     | Int -> true
+    | Bool -> true
     | TTypeVar tv -> Set.Poly.mem tTvs tv
     | SType s -> _sTypeClosed s ~tTvs ~sTvs
     | NChan ts ->
@@ -295,6 +299,7 @@ end = struct
   and _tTypeLeftRec (t : Pi.tType) ~(tvs : Pi.typeVar Set.Poly.t) : bool =
     match t with
     | Int -> false
+    | Bool -> false
     | TTypeVar tv -> Set.Poly.mem tvs tv
     | SType s -> _sTypeLeftRec s ~tvs:Set.Poly.empty
     | NChan ts ->

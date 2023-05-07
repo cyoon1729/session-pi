@@ -21,7 +21,7 @@
 %token COMMA COLON
 %token END LSBRACKET RSBRACKET BRANCH CHOICE HAT TICK MU
 %token EOF
-%token INTTYPE
+%token INTTYPE BOOLTYPE TRUE FALSE
 
 %%
 
@@ -40,6 +40,7 @@ sTypeLabels:
 
 tType:
 | INTTYPE                                      { Int }
+| BOOLTYPE                                     { Bool }
 | TYPEVAR                                      { TTypeVar $1 }
 | TICK LSQUARE sType RSQUARE                   { SType $3 }
 | HAT LSQUARE tTypeList RSQUARE                { NChan $3 }
@@ -55,7 +56,16 @@ pi:
 
 atom:
 | ZERO                                         { PEnd }
-| REP atom                                     { Rep $2 }
+| REP atom                                     { let rec ionf = function
+                                                 | PEnd -> raise (Failure
+                                                                  "useless zero process")
+                                                 | Par (x, y) -> Par (Rep (ionf x), Rep (ionf y))
+                                                 | Rep x -> Rep (ionf x)
+                                                 | New _ -> raise (Failure
+                                                                   "rep starting with new")
+                                                 | x -> Rep x
+                                                 in ionf $2
+                                               }
 | NAME ASK LSQUARE inputArgs RSQUARE DOT atom  { PInput ($1, $4, $7) }
 | NAME REP LSQUARE outputArgs RSQUARE DOT atom { POutput ($1, $4, $7) }
 | LPAREN NU NAME COLON tType RPAREN atom       { New ($3, $5, $7) }
@@ -70,6 +80,8 @@ inputArgs:
 outputArgs:
 | NAME                                         { [DataVar $1] }
 | INT                                          { [DataInt $1] }
+| TRUE                                         { [DataBool true] }
+| FALSE                                        { [DataBool false] }
 | NAME COMMA outputArgs                        { (DataVar $1) :: $3 }
 | INT  COMMA outputArgs                        { (DataInt $1) :: $3 }
 
