@@ -1,3 +1,4 @@
 (executable
- (name      test)
+ (public_name test)
+ (name test)
  (libraries sessionPi core core_unix.command_unix base async async_unix))
