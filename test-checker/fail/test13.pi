@@ -1,0 +1,16 @@
+(v x : m T.^['[&<'a : end, 
+                 'b : ?{T}.end>]]) 
+    ((v y : '[&<'a : end, 
+                'b : ?{m T.^['[&<'a : end, 
+                                 'b : ?{T}.end>]]}.end>])
+     x![y].
+     y |> {'a : zero,
+	       'b : y![x].zero}
+     | 
+     x?[y : '[&<'a : end, 
+                'b : ?{m T.^['[&<'a : end, 
+                                 'b : ?{T}.end>]]}.end>]].
+     x <| 'a.
+     y?[z : m T.^['[&<'a : end, 
+                      'b : ?{T}.end>]]].
+     zero)

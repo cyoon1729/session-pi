@@ -4,29 +4,33 @@
 
 rule tokenize = parse
 | [' ' '\t' '\r' '\n'] { tokenize lexbuf }
-| "ν" { NU }
-| "<|" { LEFTTRI }
-| "|>" { RIGHTTRI }
-| "|" { BAR }
-| "/" { SLASH }
-| "\"" { DQUOT }
-| "!"   { EMIT }
-| "?"   { ASK }
-| "print"   { PRINT }
-| "Nil" { NIL }
-| "true"  { TRUE }
-| "false" { FALSE }
-| ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { VARIABLE(id) }
-| ['0'-'9'] ['0'-'9']* as lit { NUMBER (int_of_string lit) }
-| '('   { LPAREN }
-| ')'   { RPAREN }
-| '<'   { LSBRACKET }
-| '>'   { RSBRACKET }
-| '{'   { RBRACKET }
-| '}'   { LBRACKET }
-| "."   { DOT }
-| ","   { COMMA }
-| "+"   { PLUS }
-| "-"   { MINUS }
-| ":"   { COLON }
+| "<|"   { LEFTTRI }
+| "|>"   { RIGHTTRI }
+| "|"    { BAR }
+| "."    { DOT }
+| "!"    { REP }
+| "?"    { ASK }
+| "&"    { BRANCH }
+| "+"    { CHOICE }
+| '('    { LPAREN }
+| ')'    { RPAREN }
+| '['    { LSQUARE }
+| ']'    { RSQUARE }
+| '{'    { LBRACKET }
+| '}'    { RBRACKET }
+| '<'    { LSBRACKET }
+| '>'    { RSBRACKET }
+| ","    { COMMA }
+| ":"    { COLON }
+| "^"    { HAT }
+| "'"    { TICK }
+| "m"    { MU }
+| "v"    { NU }
+| "zero" { ZERO }
+| "end"  { END }
+| "int"  { INTTYPE }
+| ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { NAME (id) }
+| ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { TYPEVAR (id) }
+| ['\''] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { LABEL (id) }
+| ['0'-'9']* as id { INT(int_of_string id) }
 | eof { EOF }

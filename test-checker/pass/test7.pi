@@ -1,0 +1,10 @@
+(v x : m T.^['[?{T, T}.end]]) 
+    ((v y : '[?{m T.^['[?{T, T}.end]], m T.^['[?{T, T}.end]]}.end]) 
+     x![y].
+     y![x, x].
+     zero 
+     | 
+     x?[y : '[?{m T.^['[?{T, T}.end]], m T.^['[?{T, T}.end]]}.end]].
+     y?[z : m T.^['[?{T, T}.end]], w : m T.^['[?{T, T}.end]]].
+     zero)
+
