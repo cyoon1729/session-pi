@@ -25,6 +25,9 @@ $ dune exec test
 ```
 make sure to run this command in the top-level directory
 
+## Main Paper
+- [Subtyping for session types in the pi calculus](https://link.springer.com/article/10.1007/s00236-005-0177-z)
+
 ## Resources we may look into:
 
 #### Fundamental
