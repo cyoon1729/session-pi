@@ -1,3 +1,5 @@
-(test
+(library
  (name test)
- (libraries sessionPi))
+ (libraries sessionPi core core_unix.command_unix base async async_unix)
+ (inline_tests)
+ (preprocess (pps ppx_inline_test)))
