@@ -144,12 +144,12 @@ and tcin
     (* add session ys to available session names *)
     let x' = Set.Poly.union x ySess in
     let subtype_vars ys ts : bool =
-	  if List.length ys <> List.length ts 
+      if List.length ys <> List.length ts
       then raise (Failure "incompatible input list lengths")
-	  else 
-      ys
-      |> List.map ~f:snd
-      |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
+      else
+        ys
+        |> List.map ~f:snd
+        |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
     in
     (* multiplex on input rules *)
     let y =
@@ -197,7 +197,6 @@ and tcout
   (ast : Pi.process)
   : envName Set.Poly.t
   =
-  (* TODO: check if non-session types are of the right type??? *)
   match ast with
   | POutput (namex, ys, p) ->
     let find_y_ys gamma x ts =
@@ -207,23 +206,32 @@ and tcout
         |> List.filter_map ~f:(fun (y', t) ->
              match y' with
              | Pi.DataVar y ->
-             (match
-               ( Map.Poly.find gamma (Name y)
-               , Map.Poly.find gamma (Plus y)
-               , Map.Poly.find gamma (Mins y) )
-             with
-             | Some (Pi.SType u), _, _
-               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
-               Some (Name y, Pi.SType u)
-             | _, Some (Pi.SType u), _
-               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
-               Some (Plus y, Pi.SType u)
-             | _, _, Some (Pi.SType u)
-               when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
-               Some (Mins y, Pi.SType u)
-             | None, None, None -> raise (Failure "name not in scope")
-             | _ -> None)
-             | _ -> None)
+               (match
+                  ( Map.Poly.find gamma (Name y)
+                  , Map.Poly.find gamma (Plus y)
+                  , Map.Poly.find gamma (Mins y) )
+                with
+                | Some (Pi.SType u), _, _
+                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                  Some (Name y, Pi.SType u)
+                | _, Some (Pi.SType u), _
+                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                  Some (Plus y, Pi.SType u)
+                | _, _, Some (Pi.SType u)
+                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                  Some (Mins y, Pi.SType u)
+                | Some u, _, _ ->
+                  (* otherwise, not a session type, only check for subtyping *)
+                  if Stype.tTypeSubC Set.Poly.empty Set.Poly.empty u t
+                  then None
+                  else raise (Failure "incompatible output type")
+                | None, None, None -> raise (Failure "name not in scope")
+                | _ -> None)
+             | Pi.DataInt _ ->
+               (* otherwise, not a session type, only check for subtyping *)
+               if Stype.tTypeSubC Set.Poly.empty Set.Poly.empty Pi.Int t
+               then None
+               else raise (Failure "incompatible output type"))
       in
       (* remove these session-typed ys from gamma *)
       let gamma' =
