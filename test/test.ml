@@ -1,13 +1,10 @@
-(*
-Can't figure out how to translate this to unit tests
-
 open Core
 open Stdio
 open SessionPi
 open Check
 
-let dir_path_pass = "../test-checker/pass/"
-let dir_path_fail = "../test-checker/fail/"
+let dir_path_pass = "test-checker/pass/"
+let dir_path_fail = "test-checker/fail/"
 
 let check_test test =
   printf "%-30s: " test;
@@ -20,7 +17,7 @@ let check_test test =
 let check_test_pass test =
   try
     check_test test;
-    printf "Ok"
+    printf "Ok\n"
   with
   | Failure m -> printf "\027[31mFail (%s)\n\027[0m" m
 ;;
@@ -44,4 +41,3 @@ let () =
   |> List.sort ~compare:String.compare
   |> List.iter ~f:(fun test -> check_test_fail (dir_path_fail ^ test))
 ;;
-*)
