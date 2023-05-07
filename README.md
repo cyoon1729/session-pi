@@ -17,8 +17,13 @@ $ nix-shell
 ```
 $ dune exec --display quiet sessionPi
 ```
-for now, this should just print "Hello, World!" 
+for now, this should just crash and burn
 
+4. To run type-checker tests
+```
+$ dune exec test/test.exe
+```
+make sure to run this command in the top-level directory
 
 ## Resources we may look into:
 
