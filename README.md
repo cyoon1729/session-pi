@@ -21,7 +21,7 @@ for now, this should just crash and burn
 
 4. To run type-checker tests
 ```
-$ dune exec test/test.exe
+$ dune exec test
 ```
 make sure to run this command in the top-level directory
 
