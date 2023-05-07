@@ -1,4 +1,5 @@
 open Core
+open Stype
 
 type envName =
   | Name of Pi.name
@@ -16,11 +17,8 @@ let rec check
   | PEnd -> tcnil gamma x ast
   | Par _ -> tcpar gamma x ast
   | Rep _ -> tcrep gamma x ast
-  | New (_, t, _) when Stype.tTypeLeftRec t ~tvs:Set.Poly.empty ->
-    raise (Failure "recursive type")
-  | New (_, t, _)
-    when not @@ Stype.tTypeClosed t ~tTvs:Set.Poly.empty ~sTvs:Set.Poly.empty ->
-    raise (Failure "type not closed")
+  | New (_, t, _) when Stype.tTypeLeftRec t -> raise (Failure "recursive type")
+  | New (_, t, _) when not @@ Stype.tTypeClosed t -> raise (Failure "type not closed")
   | New (c, t, p) ->
     (match Stype.stepLeftRec t with
      | NChan _ as t' -> tcnew gamma x @@ Pi.New (c, t', p)
@@ -106,7 +104,7 @@ and tcnews
     let y = check gamma' x' p in
     let xplus = Set.Poly.mem y (Plus namex) in
     let xmins = Set.Poly.mem y (Mins namex) in
-    let ended = Stype.sTypeSubC Set.Poly.empty Set.Poly.empty SEnd s in
+    let ended = Stype.sTypeSubC SEnd s in
     (match xplus, xmins, ended with
      | true, true, false ->
        let y' = Set.Poly.remove y (Plus namex) in
@@ -146,10 +144,7 @@ and tcin
     let subtype_vars ys ts : bool =
       if List.length ys <> List.length ts
       then raise (Failure "incompatible input list lengths")
-      else
-        ys
-        |> List.map ~f:snd
-        |> List.for_all2_exn ~f:(Stype.tTypeSubC Set.Poly.empty Set.Poly.empty) ts
+      else ys |> List.map ~f:snd |> List.for_all2_exn ~f:Stype.tTypeSubC ts
     in
     (* multiplex on input rules *)
     let y =
@@ -211,25 +206,22 @@ and tcout
                   , Map.Poly.find gamma (Plus y)
                   , Map.Poly.find gamma (Mins y) )
                 with
-                | Some (Pi.SType u), _, _
-                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                | Some (Pi.SType u), _, _ when Stype.tTypeSubC (Pi.SType u) t ->
                   Some (Name y, Pi.SType u)
-                | _, Some (Pi.SType u), _
-                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                | _, Some (Pi.SType u), _ when Stype.tTypeSubC (Pi.SType u) t ->
                   Some (Plus y, Pi.SType u)
-                | _, _, Some (Pi.SType u)
-                  when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
+                | _, _, Some (Pi.SType u) when Stype.tTypeSubC (Pi.SType u) t ->
                   Some (Mins y, Pi.SType u)
                 | Some u, _, _ ->
                   (* otherwise, not a session type, only check for subtyping *)
-                  if Stype.tTypeSubC Set.Poly.empty Set.Poly.empty u t
+                  if Stype.tTypeSubC u t
                   then None
                   else raise (Failure "incompatible output type")
                 | None, None, None -> raise (Failure "name not in scope")
                 | _ -> None)
              | Pi.DataInt _ ->
                (* otherwise, not a session type, only check for subtyping *)
-               if Stype.tTypeSubC Set.Poly.empty Set.Poly.empty Pi.Int t
+               if Stype.tTypeSubC Pi.Int t
                then None
                else raise (Failure "incompatible output type"))
       in
