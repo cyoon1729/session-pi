@@ -25,9 +25,13 @@ $ dune exec test
 ```
 make sure to run this command in the top-level directory
 
+## Main Paper
+- [Subtyping for session types in the pi calculus](https://link.springer.com/article/10.1007/s00236-005-0177-z)
+
 ## Resources we may look into:
 
 #### Fundamental
+- [Introduction to Session Types](https://www.dcs.gla.ac.uk/research/betty/summerschool2016.behavioural-types.eu/programme/DardhaIntroBST.pdf/at_download/file.pdf?fbclid=IwAR3y7zPu9lMhcSWXWkncGkSnyW5UjzWcBQEmWta0icQ0fvZHQAuvYuRbK-g)
 - [Linear Type Theory for Asynchronous Session Types](https://www.cambridge.org/core/journals/journal-of-functional-programming/article/linear-type-theory-for-asynchronous-session-types/605DA26DDDE9B1CCD35D33D0D62DF20C) (we should probably read this; seems very foundational)
 - [Foundations of Session Types and Behavioral Contracts](https://dl.acm.org/doi/pdf/10.1145/2873052)
 - [Linearity, session types and pi-calculus](https://www.cambridge.org/core/journals/mathematical-structures-in-computer-science/article/linearity-session-types-and-the-pi-calculus/C636B85EFB70566E982277957504396C) 
