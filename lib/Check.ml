@@ -197,14 +197,17 @@ and tcout
   (ast : Pi.process)
   : envName Set.Poly.t
   =
+  (* TODO: check if non-session types are of the right type??? *)
   match ast with
   | POutput (namex, ys, p) ->
     let find_y_ys gamma x ts =
       (* find the (polarized) names and types of the session-typed ys *)
       let yqs =
         List.zip_exn ys ts
-        |> List.filter_map ~f:(fun (y, t) ->
-             match
+        |> List.filter_map ~f:(fun (y', t) ->
+             match y' with
+             | Pi.DataVar y ->
+             (match
                ( Map.Poly.find gamma (Name y)
                , Map.Poly.find gamma (Plus y)
                , Map.Poly.find gamma (Mins y) )
@@ -219,6 +222,7 @@ and tcout
                when Stype.tTypeSubC Set.Poly.empty Set.Poly.empty (Pi.SType u) t ->
                Some (Mins y, Pi.SType u)
              | None, None, None -> raise (Failure "name not in scope")
+             | _ -> None)
              | _ -> None)
       in
       (* remove these session-typed ys from gamma *)

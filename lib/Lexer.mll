@@ -28,7 +28,9 @@ rule tokenize = parse
 | "v"    { NU }
 | "zero" { ZERO }
 | "end"  { END }
+| "int"  { INTTYPE }
 | ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { NAME (id) }
 | ['A'-'Z'] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { TYPEVAR (id) }
 | ['\''] ['a'-'z' 'A'-'Z' '0'-'9' '_' ]* as id { LABEL (id) }
+| ['0'-'9']* as id { INT(int_of_string id) }
 | eof { EOF }

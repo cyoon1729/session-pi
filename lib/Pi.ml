@@ -10,7 +10,6 @@ type sType =
   | SBranch of (label * sType) list
   | SChoice of (label * sType) list
   | SMu of typeVar * sType
-[@@deriving sexp]
 
 and tType =
   | Int
@@ -18,10 +17,13 @@ and tType =
   | SType of sType
   | NChan of tType list
   | TMu of typeVar * tType
-[@@deriving sexp]
 (* p. 198 *)
 
 type name = string
+
+type data =
+  | DataInt of int
+  | DataVar of name
 
 type process =
   (* TODO: integrate ints into the language *)
@@ -29,7 +31,7 @@ type process =
   | Par of process * process
   | Rep of process
   | PInput of name * (name * tType) list * process
-  | POutput of name * name list * process
+  | POutput of name * data list * process
   | New of name * tType * process
   | PBranch of name * (label * process) list
   | PChoice of name * label * process

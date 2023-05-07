@@ -11,6 +11,7 @@
 %token <Pi.name> NAME
 %token <Pi.label> LABEL
 %token <Pi.typeVar> TYPEVAR
+%token <int> INT
 
 %token <string> VARIABLE
 %token <string> STRING
@@ -20,6 +21,7 @@
 %token COMMA COLON
 %token END LSBRACKET RSBRACKET BRANCH CHOICE HAT TICK MU
 %token EOF
+%token INTTYPE
 
 %%
 
@@ -37,6 +39,7 @@ sTypeLabels:
 | LABEL COLON sType COMMA sTypeLabels          { ($1, $3) :: $5 }
 
 tType:
+| INTTYPE                                      { Int }
 | TYPEVAR                                      { TTypeVar $1 }
 | TICK LSQUARE sType RSQUARE                   { SType $3 }
 | HAT LSQUARE tTypeList RSQUARE                { NChan $3 }
@@ -65,8 +68,10 @@ inputArgs:
 | NAME COLON tType COMMA inputArgs             { ($1, $3) :: $5 }
 
 outputArgs:
-| NAME                                         { [$1] }
-| NAME COMMA outputArgs                        { $1 :: $3 }
+| NAME                                         { [DataVar $1] }
+| INT                                          { [DataInt $1] }
+| NAME COMMA outputArgs                        { (DataVar $1) :: $3 }
+| INT  COMMA outputArgs                        { (DataInt $1) :: $3 }
 
 branchArgs:
 | LABEL COLON pi                               { [($1, $3)] }
