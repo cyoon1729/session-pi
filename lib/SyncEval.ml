@@ -7,6 +7,7 @@
  *  - Evaluate whole program until termination
  *)
 open Pi
+open Print
 
 open Base
 open Core
@@ -246,10 +247,23 @@ let reduceOneStep (ctx : context) : context * bool =
 (* Reduce until termination (if possible) and return the result *)
 let rec reduce (ctx : context) : context =
   match canTerminate ctx with
-  | true ->
+  | false ->
     let (oneStep, reduced) = reduceOneStep ctx in
     if reduced
       then reduce oneStep
       else reduce (sampleRep ctx) 
-  | false -> ctx
+  | true -> ctx
+;;
+
+(* Reduce until termination (if possible) and return the result *)
+let rec debugReduce (ctx : context) : context =
+  match canTerminate ctx with
+  | false ->
+    let (oneStep, reduced) = reduceOneStep ctx in
+    let active, _ = unzipContext ctx in
+    print_endline (printProcessList active);
+    if reduced
+      then debugReduce oneStep
+      else debugReduce (sampleRep ctx) 
+  | true -> ctx
 ;;
