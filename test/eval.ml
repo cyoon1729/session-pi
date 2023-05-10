@@ -46,5 +46,5 @@ let new1 =
 
 let debugEval p = 
   print_endline ("Process: " ^ printProcess p);
-  ignore (debugReduce [ p ]);
+  ignore (debugReduce { active = [p]; reps = []; });
   print_endline "\n"
