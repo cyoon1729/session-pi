@@ -19,8 +19,20 @@ type context =
     reps : Pi.process list;
   }
 
+let _ = Random.self_init ()
+
 (* Silly helper functions *)
 let addTwo (p, q) b = p :: q :: b
+
+let randomListElement (procs: Pi.process list) : Pi.process =
+  let lstLen = List.length procs in
+  let rndIndex = Random.int lstLen in
+  let rec getElement lst idx =
+    match lst with
+    | x :: tl -> if idx = 0 then x else getElement tl (idx - 1) 
+    | [] -> raise (Failure "can't happen")
+  in
+  getElement procs rndIndex
 
 let justMapAdd m k v = 
   match (Map.add m ~key:k ~data:v) with
@@ -69,15 +81,15 @@ let groupPeers (procs : Pi.process list) : (Pi.process list) list =
   let buildPeerMap m p =
     let c = extractChanName p in
     match Map.find m c with
-    | None -> justMapAdd m c [p]
+    | None -> Map.add_multi m ~key:c ~data:p
     | Some [ q ] ->
       (match p, q with
        | PInput (_, _, _), POutput (_, _, _)
        | POutput (_, _, _), PInput (_, _, _)
        | PBranch (_, _), PChoice (_, _, _)
-       | PChoice (_, _, _), PBranch (_, _) -> justMapAdd m c [p; q]
+       | PChoice (_, _, _), PBranch (_, _) -> Map.add_multi m ~key:c ~data:p
        | _ -> m)
-      | Some [ _; _ ] -> justMapAdd m (findNewTmpName m c) [p]
+      | Some [ _; _ ] -> Map.add_multi m ~key:(findNewTmpName m c) ~data:p
     | _ -> raise (Failure "can't happen")
   in
   let peers = List.fold_left procs ~init:(Map.empty (module String)) ~f:buildPeerMap
@@ -121,26 +133,6 @@ let rec subst (proc: Pi.process) vars subs : Pi.process =
   | PBranch (c, bs) -> PBranch (valDataVar (substVar c vars subs), List.map bs ~f:(fun (l, b) -> (l, subst b vars subs))) 
   | PChoice (c, sel, p) -> PChoice (valDataVar (substVar c vars subs), sel, subst p vars subs) 
 
-(* Congruence rules, Fig 4. Might be useless.
- * Given P, return Q that is congruent to P
- *)
-let congruence (proc: Pi.process) : Pi.process = 
-  match proc with
-  | Par (p, PEnd) -> p 
-  | Par (PEnd, p) -> p
-  | Par (p, Par (q, r)) -> Par (Par (p, q), r)
-  | Par (Par (p, q), r) -> Par (p, Par (q, r))
-  | Par (New (c, ty, p), q) -> New (c, ty, Par (p, q)) (* need to check c \notin fn(q) and ty != SEnd *)
-  | Par (p, q) -> Par (q, p)
-  | Rep p -> Par (p, Rep p)
-  | New (_, SType SEnd, PEnd) -> PEnd
-  | New (_, ty, PEnd) ->
-    (match ty with
-     | SType _ -> proc (* no congruence rule defined for this *)
-     | _ -> PEnd) 
-  | New (c1, ty1, New (c2, ty2, p)) -> New (c2, ty2, New (c1, ty1, p))
-  | _ -> proc (* no congruence rule defined *)
-
 (* Determines if the context can no longer be reduced
  * If there are no processes, or all processes in the context is PEnd or a Rep,
  *  then we can terminate
@@ -162,26 +154,43 @@ let canTerminate (ctx : context) : bool =
  * nondeterministically choose a Rep process that will unblock
  * an active process
  *)
-let sampleRep (ctx : context) : context = ctx
-(*
-  let splitProcesses procs = 
-    let isInput p = (match p with PInput (_, _, _) -> true | _ -> false) in
-    let isBranch p = (match p with PBranch (_, _) -> true | _ -> false) in
-    let isOutput p = (match p with POutput (_, _, _) -> true | _ -> false) in
-    let isChoice p = (match p with PChoice (_, _, _) -> true | _ -> false) in
-    let ins = List.filter procs isInput in
-    let branches = List.filter procs isBranch in
-    let outs = List.filter procs isOutput in
-    let chooses = List.filter procs isChoice in
-    (ins, branches, outs, chooses)
+let sampleRep (ctx : context) : context =
+  let communicating procs =
+    let communicating' p =
+      match p with
+      | PInput (_, _, _)
+      | PBranch (_, _)
+      | POutput (_, _, _)
+      | PChoice (_, _, _) -> true
+      | _ -> false
+    in List.filter ~f:(fun p -> communicating' p) procs
   in
-  let pickCandidates ps1 ps2 =
-    
-
-  let active, reps = ctx in
-  let activeIns, activeBranches, activeOuts, activeChooses = splitProcesses active in
-  let repIns, repBranches, repOuts, repChooses = splitProcesses reps in
-*)
+  let getCandidates ps1 ps2 = (* is there anything in ps2 that can unblock anything in ps1 *)
+    let chansWithPolarity p =
+      match p with
+      | PInput (c, _, _) -> c ^ "-"
+      | PBranch (c, _) -> c ^ "&-"
+      | POutput (c, _, _) -> c ^ "+"
+      | PChoice (c, _, _) -> c ^ "&+"
+      | _ -> raise (Failure "probably shouldn't happen")
+    in
+    let getChanOfPeer p =
+      match p with
+      | PInput (c, _, _) -> c ^ "+"
+      | PBranch (c, _) -> c ^ "&+"
+      | POutput (c, _, _) -> c ^ "-"
+      | PChoice (c, _, _) -> c ^ "&-"
+      | _ -> raise (Failure "probably shouldn't happen")
+    in
+    let canUnblock cset c = Set.mem cset c in
+    let ps1Chans = List.map ~f:(fun p -> chansWithPolarity p) ps1 in
+    let ps1cset = Set.of_list (module String) ps1Chans in
+    List.filter ~f:(fun p -> canUnblock ps1cset (getChanOfPeer p)) ps2 
+  in  
+  let active, reps = unzipContext ctx in
+  let candidates = getCandidates (communicating active) (communicating reps) in
+  let active' = List.append active [randomListElement candidates] in
+  { active = active'; reps = reps }
 
 (* Implements R-Com and R-Select *)
 let rec reduceComm (p: Pi.process) (q: Pi.process) : Pi.process * Pi.process =
@@ -201,8 +210,10 @@ let rec reduceComm (p: Pi.process) (q: Pi.process) : Pi.process * Pi.process =
 let reduceCommunicatingPeers (peerList : Pi.process list list) : Pi.process list * bool =
   let rec reduceHelper ps builder reduced =
     match ps with
-    | [ p ] :: tl -> reduceHelper tl (p :: builder) false
-    | [ p; q ] :: tl -> reduceHelper tl (addTwo (reduceComm p q) builder) true
+    | [ p ] :: tl ->
+        reduceHelper tl (p :: builder) false
+    | [ p; q ] :: tl -> 
+        reduceHelper tl (addTwo (reduceComm p q) builder) true
     | [] -> (builder, reduced)
     | _ -> raise (Failure "can't happen")
   in
@@ -251,19 +262,19 @@ let rec reduce (ctx : context) : context =
     let (oneStep, reduced) = reduceOneStep ctx in
     if reduced
       then reduce oneStep
-      else reduce (sampleRep ctx) 
+      else reduce (sampleRep oneStep) 
   | true -> ctx
 ;;
 
 (* Reduce until termination (if possible) and return the result *)
 let rec debugReduce (ctx : context) : context =
+  let active, _ = unzipContext ctx in
+  print_endline ("active" ^ (printProcessList active));
   match canTerminate ctx with
   | false ->
     let (oneStep, reduced) = reduceOneStep ctx in
-    let active, _ = unzipContext ctx in
-    print_endline (printProcessList active);
     if reduced
       then debugReduce oneStep
-      else debugReduce (sampleRep ctx) 
+      else debugReduce (sampleRep oneStep) 
   | true -> ctx
 ;;
