@@ -11,8 +11,8 @@ let check_test test =
   let contents = In_channel.read_all test in
   let lexbuf = Lexing.from_string contents in
   let ast = Parser.pi Lexer.tokenize lexbuf in
+  Check.check ast;
   ignore(SyncEval.debugReduce (SyncEval.makeContext [ast] []));
-  Check.check ast
 ;;
 
 let check_test_pass test =
