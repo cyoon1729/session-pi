@@ -144,7 +144,8 @@ end = struct
       let x' = Set.Poly.union x ySess in
       let subtype_vars ys ts : bool =
         if List.length ys <> List.length ts
-        then raise (Failure "incompatible input list lengths")
+        then
+		  raise (Failure "incompatible input list lengths")
         else ys |> List.map ~f:snd |> List.for_all2_exn ~f:Stype.tTypeSubC ts
       in
       (* multiplex on input rules *)
@@ -167,6 +168,7 @@ end = struct
         | _, Some (SType (SInput (ts, s))), _ when subtype_vars ys ts ->
           (* TC-INS2 *)
           let gamma'' = Map.Poly.set gamma' ~key:(Plus namex) ~data:(SType s) in
+          let gamma'' = Map.Poly.remove gamma'' (Mins namex) in
           let x'' = Set.Poly.remove x (Mins namex) in
           let y = _check gamma'' x'' p in
           if Set.Poly.mem x (Plus namex) && Set.Poly.mem y (Plus namex)
@@ -175,6 +177,7 @@ end = struct
         | _, _, Some (SType (SInput (ts, s))) when subtype_vars ys ts ->
           (* TC-INS3 *)
           let gamma'' = Map.Poly.set gamma' ~key:(Mins namex) ~data:(SType s) in
+          let gamma'' = Map.Poly.remove gamma'' (Plus namex) in
           let x'' = Set.Poly.remove x (Plus namex) in
           let y = _check gamma'' x'' p in
           if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
@@ -262,6 +265,7 @@ end = struct
        | _, Some (SType (SOutput (ts, s))), _ ->
          (* TC-OUTS2 *)
          let gamma' = Map.Poly.set gamma ~key:(Plus namex) ~data:(SType s) in
+         let gamma' = Map.Poly.remove gamma' (Mins namex) in
          let x' = Set.Poly.remove x (Mins namex) in
          let y, ySess = find_y_ys gamma' x' ts in
          if Set.Poly.mem x (Plus namex) && Set.Poly.mem y (Plus namex)
@@ -270,6 +274,7 @@ end = struct
        | _, _, Some (SType (SOutput (ts, s))) ->
          (* TC-OUTS3 *)
          let gamma' = Map.Poly.set gamma ~key:(Mins namex) ~data:(SType s) in
+         let gamma' = Map.Poly.remove gamma' (Plus namex) in
          let x' = Set.Poly.remove x (Plus namex) in
          let y, ySess = find_y_ys gamma' x' ts in
          if Set.Poly.mem x (Mins namex) && Set.Poly.mem y (Mins namex)
