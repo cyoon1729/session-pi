@@ -1,7 +1,7 @@
 (v x : ^['[?{int, int}.!{int}.!{int}.end]]) 
     ((v y : '[?{int, int}.!{int}.!{int}.end]) 
      x![y].
-     y![2, 3].
+     y![2].
      y?[z : int].
      y?[w : int].
      zero 

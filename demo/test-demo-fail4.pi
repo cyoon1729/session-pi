@@ -9,5 +9,4 @@
      x?[y : '[?{int, int}.!{int}.!{int}.end]].
      y?[z : int, w : int].
      y![z].
-     y![w].
      zero)
