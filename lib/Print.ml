@@ -10,12 +10,12 @@ let rec strJoin (sep : string) = function
 ;;
 
 let rec printProcess (proc : Pi.process) : string =
-  (*
   let rec printType t =
     let rec tylist lst acc =
       match lst with
       | [] -> acc
-      | ty :: tl -> tylist tl (acc ^ (printType ty))
+      | ty :: [] -> (acc ^ (printType ty))
+      | ty :: tl -> tylist tl (acc ^ (printType ty) ^ ", ")
     in
     match t with
     | Int -> "Int"
@@ -25,6 +25,7 @@ let rec printProcess (proc : Pi.process) : string =
         let rec stytuplist lst acc =
           match lst with
           | [] -> acc
+          | (lb, ty) :: [] -> (acc ^ lb ^ ": " ^ (printSType ty))
           | (lb, ty) :: tl -> stytuplist tl (acc ^ lb ^ ": " ^ (printSType ty) ^ ", ")
         in
         match s with
@@ -40,8 +41,7 @@ let rec printProcess (proc : Pi.process) : string =
     | NChan tlst -> "[" ^ (tylist tlst "")  ^ "]"
     | TMu (tv, tty) -> "RecType: " ^ tv ^ "." ^ (printType tty)
   in
-  *)
-  let printType _ = "TYPE" in
+  (* let printType _ = "TYPE" in *)
   let printIns ins =
     let vars = List.map ~f:(fun (v, t) -> v ^ ": " ^ printType t) ins in
     "[" ^ strJoin "," vars ^ "]"
