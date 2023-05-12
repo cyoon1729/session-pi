@@ -7,10 +7,11 @@ let dir_path_pass = "test-checker/pass/"
 let dir_path_fail = "test-checker/fail/"
 
 let check_test test =
-  printf "%-30s: " test;
+  printf "%-30s: \n" test;
   let contents = In_channel.read_all test in
   let lexbuf = Lexing.from_string contents in
   let ast = Parser.pi Lexer.tokenize lexbuf in
+  ignore(SyncEval.debugReduce (SyncEval.makeContext [ast] []));
   Check.check ast
 ;;
 
