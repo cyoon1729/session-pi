@@ -1,0 +1,10 @@
+((v y : '[?{int, int}.!{int}.!{int}.end]) 
+  (y![2, 3].
+  y?[z : int].
+  y?[w : int].
+  zero 
+  | 
+  y?[z : int, w : int].
+  y![z].
+  y![w].
+  zero))
